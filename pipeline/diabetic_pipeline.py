@@ -1,4 +1,7 @@
 # Databricks notebook source
+# MAGIC %pip install lifelines
+
+# COMMAND ----------
 # MAGIC %md
 # MAGIC # Diabetic Patient Treatment Outcome Comparison Pipeline
 # MAGIC 
@@ -10,6 +13,30 @@
 # MAGIC 5. Pre-calculates Kaplan-Meier survival statistics
 
 # COMMAND ----------
+
+import sys
+import os
+
+# Add the bundle files root to sys.path so `pipeline` package can be imported.
+# When deployed via DAB, this notebook lives at:
+#   /Workspace/.../files/pipeline/diabetic_pipeline
+# We need /Workspace/.../files/ on the path.
+try:
+    # In Databricks DLT, __file__ is defined as the workspace path of the notebook
+    _notebook_path = __file__
+    _notebook_dir = os.path.dirname(_notebook_path)
+    _bundle_root = os.path.dirname(_notebook_dir)
+    if _bundle_root not in sys.path:
+        sys.path.insert(0, _bundle_root)
+except Exception:
+    # Fallback: try to derive path from dbutils
+    try:
+        _nb_path = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
+        _bundle_root = "/Workspace" + os.path.dirname(os.path.dirname(_nb_path))
+        if _bundle_root not in sys.path:
+            sys.path.insert(0, _bundle_root)
+    except Exception:
+        pass
 
 import dlt
 from pyspark.sql import functions as F
@@ -97,19 +124,20 @@ _COHORT_SCHEMA = StructType([
     "mortality_status_valid": "mortality_status IN (0, 1)",
 })
 def diabetic_cohort_summary():
-    # Pre-filter in Spark before converting to pandas (reduces driver memory pressure)
+    # Pre-filter in Spark before converting to pandas (reduces driver memory pressure).
+    # Read directly from source to avoid DLT dependency scheduling issues with bronze views.
     conditions_pd = (
-        dlt.read("bronze_condition_occurrence")
+        spark.read.table(_src("condition_occurrence"))
         .filter(F.col("condition_source_value") == "E11.9")
         .toPandas()
     )
     drugs_pd = (
-        dlt.read("bronze_drug_exposure")
+        spark.read.table(_src("drug_exposure"))
         .filter(F.col("drug_source_value").isin(TREATMENT_DRUGS))
         .toPandas()
     )
-    obs_pd = dlt.read("bronze_observation_period").toPandas()
-    death_pd = dlt.read("bronze_death").toPandas()
+    obs_pd = spark.read.table(_src("observation_period")).toPandas()
+    death_pd = spark.read.table(_src("death")).toPandas()
 
     # 1. Identify diabetic patients (E11.9)
     diabetic = identify_diabetic_patients(conditions_pd)
@@ -158,7 +186,10 @@ def diabetic_cohort_summary():
         ),
         axis=1,
     )
-    treatment["date_of_death"] = treatment.get("death_date", pd.NaT)
+    # Replace NaN with None for date_of_death (Spark DateType cannot accept float NaN)
+    treatment["date_of_death"] = treatment["death_date"].where(
+        treatment["death_date"].notna(), other=None
+    ) if "death_date" in treatment.columns else None
 
     # 8. Select and cast final columns
     result = treatment[[
@@ -197,7 +228,10 @@ _SURVIVAL_SCHEMA = StructType([
     "survival_probability_valid": "survival_probability >= 0 AND survival_probability <= 1",
 })
 def survival_statistics():
-    cohort_pd = dlt.read("diabetic_cohort_summary").toPandas()
+    # Read from the UC table directly to avoid DLT dependency scheduling issues
+    cohort_pd = spark.read.table(
+        f"{SOURCE_CATALOG}.hls_demo_omop_analytics.diabetic_cohort_summary"
+    ).toPandas()
     stats_pd = compute_survival_statistics(cohort_pd)
     if stats_pd.empty:
         return spark.createDataFrame([], _SURVIVAL_SCHEMA)
