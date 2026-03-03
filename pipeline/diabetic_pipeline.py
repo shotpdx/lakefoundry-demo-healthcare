@@ -97,9 +97,17 @@ _COHORT_SCHEMA = StructType([
     "mortality_status_valid": "mortality_status IN (0, 1)",
 })
 def diabetic_cohort_summary():
-    # Load bronze tables as pandas for cohort logic helpers
-    conditions_pd = dlt.read("bronze_condition_occurrence").toPandas()
-    drugs_pd = dlt.read("bronze_drug_exposure").toPandas()
+    # Pre-filter in Spark before converting to pandas (reduces driver memory pressure)
+    conditions_pd = (
+        dlt.read("bronze_condition_occurrence")
+        .filter(F.col("condition_source_value") == "E11.9")
+        .toPandas()
+    )
+    drugs_pd = (
+        dlt.read("bronze_drug_exposure")
+        .filter(F.col("drug_source_value").isin(TREATMENT_DRUGS))
+        .toPandas()
+    )
     obs_pd = dlt.read("bronze_observation_period").toPandas()
     death_pd = dlt.read("bronze_death").toPandas()
 
@@ -119,7 +127,11 @@ def diabetic_cohort_summary():
     treatment_ids = set(treatment["person_id"].tolist())
 
     # 4. Join observation period end date onto treatment
-    obs_end = obs_diabetic[["person_id", "observation_period_end_date"]].drop_duplicates("person_id")
+    obs_end_raw = obs_diabetic[["person_id", "observation_period_end_date"]]
+    dup_count = len(obs_end_raw) - obs_end_raw.drop_duplicates("person_id").shape[0]
+    if dup_count > 0:
+        print(f"[diabetic_cohort_summary] Dropping {dup_count} duplicate observation period rows")
+    obs_end = obs_end_raw.drop_duplicates("person_id")
     treatment = treatment.merge(obs_end, on="person_id", how="left")
 
     # 5. Compute observation_end_date = max(obs_period_end, drug_exposure_end)
@@ -153,8 +165,10 @@ def diabetic_cohort_summary():
         "person_id", "treatment_group", "treatment_start_date",
         "observation_end_date", "mortality_status", "date_of_death",
     ]].copy()
+    # Ensure non-nullable columns have no nulls before casting
+    assert result["person_id"].notna().all(), "person_id has unexpected null values"
     result["person_id"] = result["person_id"].astype("int64")
-    result["mortality_status"] = result["mortality_status"].astype("int32")
+    result["mortality_status"] = result["mortality_status"].fillna(0).astype("int32")
 
     return spark.createDataFrame(result, schema=_COHORT_SCHEMA)
 
