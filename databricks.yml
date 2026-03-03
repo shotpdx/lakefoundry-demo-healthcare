@@ -1,0 +1,12 @@
+bundle:
+  name: diabetic-treatment-comparison
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-fa80cb73-9755.cloud.databricks.com

@@ -1,0 +1,15 @@
+resources:
+  pipelines:
+    diabetic_treatment_pipeline:
+      name: diabetic_treatment_pipeline
+      catalog: sandbox_us_west_2
+      target: hls_demo_omop_analytics
+      libraries:
+        - notebook:
+            path: ../pipeline/diabetic_pipeline.py
+      configuration:
+        pipelines.enableTrackHistory: "true"
+      development: true
+      continuous: false
+      channel: CURRENT
+      serverless: true

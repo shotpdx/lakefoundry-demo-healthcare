@@ -1,0 +1,189 @@
+meta:
+  contract_version: '1.0'
+  title: Diabetic Patient Treatment Outcome Comparison Pipeline
+  requester:
+    name: User
+    role: Requester
+    org: Unknown
+  stakeholders: []
+  source_context:
+    conversation_id: healthcare_rwe_demo_conversation
+    links: []
+  created_at: '2024-01-01T00:00:00Z'
+  updated_at: '2024-01-01T00:00:00Z'
+outcome:
+  problem_statement: Analyze diabetic patients and compare outcomes by treatment.
+  goals:
+  - Identify diabetic patients from OMOP data.
+  - Define treatment groups for diabetic patients based on specific medications.
+  - Compare mortality outcomes across different treatment groups.
+  - Generate pre-calculated survival statistics using Kaplan-Meier estimator.
+  non_goals:
+  - Building a real-time streaming pipeline.
+  - Developing a custom interactive dashboard/app.
+  success_metrics:
+  - metric: Pipeline execution success rate
+    target: 95%
+  users_personas: []
+  constraints: []
+artifact_plan:
+  artifact_types:
+  - pipeline
+  environments:
+  - dev
+  delivery:
+    milestones: []
+    definition_of_done:
+    - Output tables populated and validated
+    - Code complete and reviewed
+open_questions: []
+decisions:
+- decision: Solution type will be a Data Pipeline.
+  made_by: User
+- decision: Data pipeline will be implemented using Delta Live Tables (DLT).
+  rationale: Chosen for building robust and reliable data pipelines.
+  made_by: User
+- decision: Source data for the DLT pipeline will come from Unity Catalog.
+  rationale: The `README.md` indicates the `sandbox_us_west_2.hls_demo_omop` catalog
+    contains relevant OMOP tables.
+  made_by: User
+- decision: DLT pipeline will use batch processing.
+  made_by: User
+- decision: All listed OMOP tables (`person`, `condition_occurrence`, `drug_exposure`,
+    `procedure_occurrence`, `visit_occurrence`, `observation_period`, `death`) will
+    be used for comprehensive analysis.
+  made_by: User
+- decision: Primary key for identifying and linking patient data across OMOP tables
+    will be `person_id` from the `person` table.
+  rationale: Standard for OMOP data.
+  made_by: User
+- decision: Diabetic patients will be identified using a combination of OMOP concept
+    IDs and keywords from the `condition_occurrence` table.
+  rationale: Offers a robust way to capture relevant conditions.
+  made_by: User
+- decision: Treatment will be identified by filtering on specific OMOP concept IDs
+    related to drugs or drug classes from the `drug_exposure` table.
+  rationale: Effective way to precisely define treatments for comparison.
+  made_by: User
+- decision: Mortality from the `death` table will be the key outcome for comparison.
+  made_by: User
+- decision: Mortality will be associated with treatment by considering deaths occurring
+    within a specific time window after the start of treatment.
+  rationale: Critical detail for defining DLT pipeline logic.
+  made_by: User
+- decision: The 'specific time window' for observing mortality will be until the end
+    of the patient's `observation_period`.
+  rationale: Provides a clear and consistent timeframe for outcome assessment.
+  made_by: User
+- decision: DLT pipeline will pre-calculate necessary statistics (e.g., survival probabilities)
+    and store them in a table ready for direct plotting.
+  made_by: User
+- decision: Diabetic patients will be identified using ICD-10 code `E11.9` in the
+    `condition_source_value` column of the `condition_occurrence` table.
+  rationale: '`E11.9` commonly corresponds to Type 2 Diabetes Mellitus and was found
+    in the sample data.'
+  made_by: User
+- decision: Treatment groups will be defined using specific `drug_concept_id` values.
+  made_by: User
+- decision: 'Treatment groups will be defined by the drug names: ''Metformin'', ''Insulin
+    glargine'', and ''Glipizide'' from the `drug_source_value` column.'
+  rationale: These are common diabetes treatments and were found in the `drug_exposure`
+    table. For this demo, we assume a direct mapping to their concept IDs.
+  made_by: User
+- decision: The 'start of treatment' is defined as the `drug_exposure_start_date`
+    for the first exposure to the drug within the patient's observation period.
+  rationale: Provides a clear and actionable definition.
+  made_by: User
+- decision: If a patient's `drug_exposure` extends beyond their `observation_period_end_date`,
+    the observation window for mortality will be extended to the `drug_exposure_end_date`.
+  rationale: Provides a comprehensive approach to capturing mortality events relative
+    to treatment.
+  made_by: User
+- decision: Processed and pre-calculated data will be stored in a new schema `hls_demo_omop_analytics`
+    within the same Unity Catalog (`sandbox_us_west_2.hls_demo_omop`).
+  made_by: User
+- decision: Patients exposed to multiple defined treatments will be assigned to the
+    first treatment received among the three.
+  rationale: Provides a clear methodology for cohort assignment.
+  made_by: User
+- decision: 'The `diabetic_cohort_summary` table will have the schema: `person_id`
+    (BIGINT, Primary Key), `treatment_group` (STRING), `treatment_start_date` (DATE),
+    `observation_end_date` (DATE), `mortality_status` (INT), `date_of_death` (DATE,
+    NULLABLE).'
+  rationale: Captures necessary patient-level information.
+  made_by: User
+- decision: 'The `survival_statistics` table will have the schema: `treatment_group`
+    (STRING), `time_point` (INT), `survival_probability` (DOUBLE), `lower_ci` (DOUBLE),
+    `upper_ci` (DOUBLE), `num_at_risk` (BIGINT), `num_events` (BIGINT).'
+  rationale: Provides rich data for advanced statistical visualizations.
+  made_by: User
+- decision: The requirement for a dashboard is dropped.
+  rationale: Simplifies project scope, focusing purely on the data pipeline and table
+    generation.
+  made_by: User
+- decision: Kaplan-Meier estimator will be used for survival analysis.
+  rationale: Standard and appropriate method for generating survival curves.
+  made_by: User
+- decision: Completeness checks will be implemented as a key data quality requirement.
+  rationale: Ensures critical columns have no null values, important for data reliability.
+  made_by: User
+assumptions: []
+data:
+  sources:
+  - name: OMOP CDM Tables
+    type: Unity Catalog
+    location: '`sandbox_us_west_2.hls_demo_omop`'
+    access_pattern: Batch
+  sinks:
+  - name: Diabetic Cohort Summary Table
+    type: Delta Table
+    location: '`sandbox_us_west_2.hls_demo_omop_analytics.diabetic_cohort_summary`'
+    schema:
+      person_id: BIGINT
+      treatment_group: STRING
+      treatment_start_date: DATE
+      observation_end_date: DATE
+      mortality_status: INT
+      date_of_death: DATE, NULLABLE
+  - name: Survival Statistics Table
+    type: Delta Table
+    location: '`sandbox_us_west_2.hls_demo_omop_analytics.survival_statistics`'
+    schema:
+      treatment_group: STRING
+      time_point: INT
+      survival_probability: DOUBLE
+      lower_ci: DOUBLE
+      upper_ci: DOUBLE
+      num_at_risk: BIGINT
+      num_events: BIGINT
+  transformations:
+  - Identify diabetic patients using ICD-10 code `E11.9` in `condition_source_value`
+    from `condition_occurrence` table.
+  - Identify treatment groups ('Metformin', 'Insulin glargine', 'Glipizide') from
+    `drug_source_value` in `drug_exposure` table.
+  - Assign patients to the first treatment received among the defined drugs.
+  - Define 'start of treatment' as the `drug_exposure_start_date` for the first exposure
+    within the patient's observation period.
+  - Identify mortality from the `death` table.
+  - Associate mortality with treatment by considering deaths occurring up to the `observation_period_end_date`
+    or `drug_exposure_end_date` (whichever is later) after treatment start.
+  - Pre-calculate survival statistics using the Kaplan-Meier estimator.
+  quality_requirements:
+  - 'Completeness checks: Ensure critical columns (`person_id`, `condition_start_date`,
+    `drug_exposure_start_date`, `death_date` if applicable) have no null values.'
+compute_orchestration:
+  compute_type: Delta Live Tables
+  schedule: Batch (e.g., daily, weekly)
+  dependencies: []
+governance_security:
+  data_classification: PHI (Protected Health Information)
+  access_controls:
+  - Unity Catalog access controls for OMOP data and output tables.
+  audit_requirements: []
+  compliance_requirements: []
+acceptance:
+  test_scenarios: []
+  acceptance_criteria:
+  - Output tables populated and validated
+  - Code complete and reviewed
+  sign_off_required: []
