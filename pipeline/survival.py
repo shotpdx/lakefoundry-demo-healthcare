@@ -6,6 +6,7 @@ survival_statistics DataFrame ready for storage in Delta.
 from __future__ import annotations
 
 import pandas as pd
+import numpy as np
 from lifelines import KaplanMeierFitter
 
 
@@ -32,6 +33,14 @@ def compute_survival_statistics(cohort: pd.DataFrame) -> pd.DataFrame:
             "lower_ci", "upper_ci", "num_at_risk", "num_events"
         ])
 
+    required_cols = {
+        "treatment_group", "treatment_start_date", "observation_end_date",
+        "mortality_status"
+    }
+    missing = required_cols - set(cohort.columns)
+    if missing:
+        raise ValueError(f"cohort is missing required columns: {missing}")
+
     # Compute duration (days from treatment_start_date to observation_end_date)
     cohort = cohort.copy()
     cohort["duration"] = (
@@ -50,17 +59,21 @@ def compute_survival_statistics(cohort: pd.DataFrame) -> pd.DataFrame:
         timeline = kmf.survival_function_.index.astype(int)
         sf = kmf.survival_function_[group].values
         ci = kmf.confidence_interval_
+        ci_cols = ci.columns.tolist()
 
         # Compute num_at_risk and num_events at each timeline point
-        at_risk = [int((df["duration"] >= t).sum()) for t in timeline]
-        events = [int(((df["duration"] <= t) & (df["mortality_status"] == 1)).sum()) for t in timeline]
+        durations_arr = df["duration"].values
+        events_arr = df["mortality_status"].values
+        timeline_arr = timeline.values if hasattr(timeline, 'values') else np.array(timeline)
+        at_risk = (durations_arr[:, None] >= timeline_arr[None, :]).sum(axis=0).tolist()
+        events = ((durations_arr[:, None] <= timeline_arr[None, :]) & (events_arr[:, None] == 1)).sum(axis=0).tolist()
 
         group_df = pd.DataFrame({
             "treatment_group": group,
             "time_point": timeline,
             "survival_probability": sf,
-            "lower_ci": ci.iloc[:, 0].values,
-            "upper_ci": ci.iloc[:, 1].values,
+            "lower_ci": ci[ci_cols[0]].values,
+            "upper_ci": ci[ci_cols[1]].values,
             "num_at_risk": at_risk,
             "num_events": events,
         })
