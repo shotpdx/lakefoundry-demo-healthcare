@@ -1,0 +1,14 @@
+resources:
+  pipelines:
+    diabetic_outcomes_pipeline:
+      name: "[${bundle.target}] diabetic_outcomes_pipeline"
+      catalog: lakefoundry_dev
+      target: hls_demo_omop_analytics
+      root_path: ../src/diabetic_outcomes
+      libraries:
+        - glob:
+            include: ../src/diabetic_outcomes/transformations/**/*.py
+      serverless: true
+      development: true
+      continuous: false
+      channel: current

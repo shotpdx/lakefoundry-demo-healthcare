@@ -1,0 +1,12 @@
+bundle:
+  name: diabetic-outcomes
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    default: true
+    mode: development
+    workspace:
+      profile: default
