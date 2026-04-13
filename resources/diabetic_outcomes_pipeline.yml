@@ -2,12 +2,13 @@ resources:
   pipelines:
     diabetic_outcomes_pipeline:
       name: "[${bundle.target}] diabetic_outcomes_pipeline"
-      catalog: lakefoundry_dev
-      target: hls_demo_omop_analytics
-      root_path: ../src/diabetic_outcomes
+      catalog: ${var.catalog}
+      target: ${var.schema}
       libraries:
-        - glob:
-            include: ../src/diabetic_outcomes/transformations/**/*.py
+        - notebook:
+            path: ../src/diabetic_outcomes/transformations/diabetic_cohort_summary.py
+        - notebook:
+            path: ../src/diabetic_outcomes/transformations/survival_statistics.py
       serverless: true
       development: true
       continuous: false
