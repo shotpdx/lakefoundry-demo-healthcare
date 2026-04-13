@@ -1,23 +1,48 @@
-from unittest.mock import MagicMock
+"""Unit tests for transformation logic.
 
-from pyspark.sql import SparkSession
-
+These tests require a Spark session and are skipped in environments
+where Spark is not available or properly configured.
+"""
 import sys
 from pathlib import Path
 import types
 from unittest.mock import MagicMock
 
+import pytest
+
+# Add src to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+# Mock pyspark.pipelines if not available
 if 'pyspark.pipelines' not in sys.modules:
     sys.modules['pyspark.pipelines'] = types.SimpleNamespace(materialized_view=lambda **kwargs: (lambda f: f))
+
+# Try to import SparkSession
+try:
+    from pyspark.sql import SparkSession
+    SPARK_AVAILABLE = True
+except ImportError:
+    SPARK_AVAILABLE = False
+    SparkSession = None
 
 from diabetic_outcomes.transformations import diabetic_cohort_summary as dcs
 from diabetic_outcomes.transformations import survival_statistics as ss
 
 
-def test_diabetic_cohort_summary_uses_latest_observation_period(monkeypatch):
-    spark = SparkSession.builder.getOrCreate()
+@pytest.fixture
+def spark_session():
+    """Create a Spark session for testing, skip if not available."""
+    if not SPARK_AVAILABLE:
+        pytest.skip("PySpark not available")
+    try:
+        return SparkSession.builder.master("local[1]").appName("test").getOrCreate()
+    except Exception as e:
+        pytest.skip(f"Could not create Spark session: {e}")
+
+
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_diabetic_cohort_summary_uses_latest_observation_period(spark_session, monkeypatch):
+    spark = spark_session
 
     tables = {
         dcs._source("person"): spark.createDataFrame([(1,), (2,)], ["person_id"]),
@@ -48,8 +73,9 @@ def test_diabetic_cohort_summary_uses_latest_observation_period(monkeypatch):
     assert {r.observation_end_date.isoformat() for r in result} == {"2020-12-31", "2020-05-01"}
 
 
-def test_survival_statistics_counts_events_exactly_at_time_point(monkeypatch):
-    spark = SparkSession.builder.getOrCreate()
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_survival_statistics_counts_events_exactly_at_time_point(spark_session, monkeypatch):
+    spark = spark_session
     cohort = spark.createDataFrame([
         (1, "Metformin", "2020-01-01", "2020-01-10", 1, "2020-01-10"),
         (2, "Metformin", "2020-01-01", "2020-01-20", 0, None),
