@@ -1,0 +1,16 @@
+bundle:
+  name: diabetic-outcomes
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    default: lakefoundry_dev
+  schema:
+    default: hls_demo_omop_analytics
+
+targets:
+  dev:
+    default: true
+    mode: development

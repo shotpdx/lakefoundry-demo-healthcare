@@ -1,0 +1,15 @@
+resources:
+  pipelines:
+    diabetic_outcomes_pipeline:
+      name: "[${bundle.target}] diabetic_outcomes_pipeline"
+      catalog: ${var.catalog}
+      target: ${var.schema}
+      libraries:
+        - notebook:
+            path: ../src/diabetic_outcomes/transformations/diabetic_cohort_summary.py
+        - notebook:
+            path: ../src/diabetic_outcomes/transformations/survival_statistics.py
+      serverless: true
+      development: true
+      continuous: false
+      channel: current
