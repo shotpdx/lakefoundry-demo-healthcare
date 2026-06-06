@@ -3,6 +3,8 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql import Window
 
+from diabetic_outcomes.transformations.diabetic_cohort_summary import SILVER_DIABETIC_TREATMENT_COHORT
+
 
 def _km_ci_expr(survival_col: str, variance_col: str, z: float, upper: bool) -> F.Column:
     se = F.sqrt(F.col(variance_col))
@@ -16,7 +18,7 @@ def _km_ci_expr(survival_col: str, variance_col: str, z: float, upper: bool) -> 
     comment="Kaplan-Meier survival statistics by treatment group",
 )
 def survival_statistics() -> DataFrame:
-    cohort = spark.read.table("diabetic_cohort_summary")
+    cohort = spark.read.table(SILVER_DIABETIC_TREATMENT_COHORT)
 
     events = (
         cohort.select(
