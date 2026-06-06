@@ -6,12 +6,16 @@ include:
 
 variables:
   catalog:
-    default: main
+    default: cme_outcomes_uswest
   schema:
-    default: hls_demo_omop_analytics
+    default: lakefoundry
+  source_catalog:
+    default: databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm
+  source_schema:
+    default: patient_risk_altered_omop
 
-# Use an accessible workspace catalog for bundle-managed resources in this run.
-# Source OMOP tables remain referenced explicitly in transformation code.
+# Use an accessible workspace catalog/schema for bundle-managed resources.
+# The pipeline reads source OMOP tables from the transformation code constants.
 targets:
   dev:
     default: true
@@ -19,4 +23,6 @@ targets:
     variables:
       catalog: cme_outcomes_uswest
       schema: lakefoundry
+      source_catalog: databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm
+      source_schema: patient_risk_altered_omop
 

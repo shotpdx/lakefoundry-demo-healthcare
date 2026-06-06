@@ -4,6 +4,9 @@ resources:
       name: "[${bundle.target}] diabetic_outcomes_pipeline"
       catalog: ${var.catalog}
       target: ${var.schema}
+      configuration:
+        source_catalog: ${var.source_catalog}
+        source_schema: ${var.source_schema}
       libraries:
         - file:
             path: ../src/diabetic_outcomes/transformations/bronze_omop.py

@@ -128,7 +128,8 @@ These Gold outputs intentionally expose explicit lineage markers back to the Sil
 - Treatment conformance uses OMOP concept joins on `drug_source_value = concept_code`, with pattern-based grouping over concept name, concept code, and raw source value.
 - The Silver cohort keeps only records with non-negative follow-up where `observation_end_date >= treatment_start_date`.
 - Gold lineage is currently treatment-group scoped through `silver_source_table`, `silver_source_key`, `silver_lineage_layer`, and `gold_analytics_version`.
-- Deployment and Databricks workspace execution are intentionally deferred; this task only claims local code, local tests, and task-scoped documentation.
+- Task 3 owns deployment and workspace verification. The Databricks bundle now passes `databricks bundle validate` and deploys the medallion pipeline into `${var.catalog}.${var.schema}` with pipeline configuration keys `source_catalog` and `source_schema` for the upstream OMOP source location.
+- Workspace execution still depends on the configured source catalog/schema being readable and containing the expected OMOP tables (`person`, `condition_occurrence`, `drug_exposure`, `death`, `observation_period`, `concept`). Preserve failed run evidence if that upstream source is unavailable and update the bundle target variables before retrying.
 
 ### Local quality expectations for Task 2
 
@@ -143,5 +144,8 @@ Local tests now validate:
 ### Local verification for Tasks 1-2
 
 - `pytest tests/test_transformations.py tests/test_data_quality.py -x`
-- Do not interpret this task as completed workspace deployment; bundle deploy/run verification remains intentionally deferred to Task 3.
+- `databricks bundle validate`
+- `databricks bundle deploy`
+- `databricks bundle run diabetic_outcomes_pipeline`
+- If the pipeline run fails before materializing Bronze/Silver/Gold assets, keep the failed update log as acceptance evidence and correct the bundle workspace/source configuration before rerunning.
 
