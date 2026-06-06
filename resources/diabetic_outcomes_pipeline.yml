@@ -5,11 +5,11 @@ resources:
       catalog: ${var.catalog}
       target: ${var.schema}
       libraries:
-        - notebook:
+        - file:
             path: ../src/diabetic_outcomes/transformations/bronze_omop.py
-        - notebook:
+        - file:
             path: ../src/diabetic_outcomes/transformations/diabetic_cohort_summary.py
-        - notebook:
+        - file:
             path: ../src/diabetic_outcomes/transformations/survival_statistics.py
       serverless: true
       development: true
