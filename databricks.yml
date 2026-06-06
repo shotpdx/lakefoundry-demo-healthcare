@@ -6,7 +6,7 @@ include:
 
 variables:
   catalog:
-    default: lakefoundry_dev
+    default: sandbox_us_west_2
   schema:
     default: hls_demo_omop_analytics
 
