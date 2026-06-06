@@ -6,6 +6,8 @@ resources:
       target: ${var.schema}
       libraries:
         - notebook:
+            path: ../src/diabetic_outcomes/transformations/bronze_omop.py
+        - notebook:
             path: ../src/diabetic_outcomes/transformations/diabetic_cohort_summary.py
         - notebook:
             path: ../src/diabetic_outcomes/transformations/survival_statistics.py

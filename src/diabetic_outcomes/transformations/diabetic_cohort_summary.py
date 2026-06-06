@@ -3,18 +3,19 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql import Window
 
-SOURCE_CATALOG = "databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm"
-SOURCE_SCHEMA = "patient_risk_altered_omop"
-SOURCE_PREFIX = f"{SOURCE_CATALOG}.{SOURCE_SCHEMA}"
-
-TARGET_CATALOG = "lakefoundry_dev"
-TARGET_SCHEMA = "hls_demo_omop_analytics"
+from diabetic_outcomes.transformations.bronze_omop import (
+    BRONZE_CONDITION_OCCURRENCE,
+    BRONZE_CONCEPT,
+    BRONZE_DEATH,
+    BRONZE_DRUG_EXPOSURE,
+    BRONZE_OBSERVATION_PERIOD,
+)
 
 DIABETES_CONDITION_CODE = "44054006"
 
 
-def _source(table_name: str) -> str:
-    return f"{SOURCE_PREFIX}.{table_name}"
+def _bronze(table_name: str) -> str:
+    return table_name
 
 
 @dp.materialized_view(
@@ -22,12 +23,11 @@ def _source(table_name: str) -> str:
     comment="Diabetic cohort treatment summary for survival analysis",
 )
 def diabetic_cohort_summary() -> DataFrame:
-    person = spark.read.table(_source("person")).alias("p")
-    condition = spark.read.table(_source("condition_occurrence")).alias("c")
-    drug = spark.read.table(_source("drug_exposure")).alias("d")
-    death = spark.read.table(_source("death")).alias("de")
-    observation = spark.read.table(_source("observation_period")).alias("o")
-    concept = spark.read.table(_source("concept")).alias("co")
+    condition = spark.read.table(_bronze(BRONZE_CONDITION_OCCURRENCE)).alias("c")
+    drug = spark.read.table(_bronze(BRONZE_DRUG_EXPOSURE)).alias("d")
+    death = spark.read.table(_bronze(BRONZE_DEATH)).alias("de")
+    observation = spark.read.table(_bronze(BRONZE_OBSERVATION_PERIOD)).alias("o")
+    concept = spark.read.table(_bronze(BRONZE_CONCEPT)).alias("co")
 
     diabetes_patients = (
         condition.filter(F.col("condition_source_value") == F.lit(DIABETES_CONDITION_CODE))

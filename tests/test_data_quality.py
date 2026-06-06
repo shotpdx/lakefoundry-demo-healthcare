@@ -1,10 +1,21 @@
 import pytest
 
 
+from diabetic_outcomes.transformations import bronze_omop as bronze
+
 CATALOG = "lakefoundry_dev"
 SCHEMA = "hls_demo_omop_analytics"
 COHORT_TABLE = f"{CATALOG}.{SCHEMA}.diabetic_cohort_summary"
 SURVIVAL_TABLE = f"{CATALOG}.{SCHEMA}.survival_statistics"
+
+BRONZE_TABLES = [
+    bronze.BRONZE_PERSON,
+    bronze.BRONZE_CONDITION_OCCURRENCE,
+    bronze.BRONZE_DRUG_EXPOSURE,
+    bronze.BRONZE_DEATH,
+    bronze.BRONZE_OBSERVATION_PERIOD,
+    bronze.BRONZE_CONCEPT,
+]
 
 EXPECTED_COHORT_SCHEMA = [
     ("person_id", "bigint"),
@@ -64,6 +75,11 @@ def _assert_schema(table_name: str, expected_schema, sql_executor):
     )
 
 
+def test_bronze_table_set_matches_expected_medallion_inputs():
+    assert list(bronze.BRONZE_TABLE_NAMES) == BRONZE_TABLES
+    assert all(table_name.startswith("bronze_omop_") for table_name in BRONZE_TABLES)
+
+
 def test_diabetic_cohort_summary_schema(tables_available, sql_executor):
     _assert_schema(COHORT_TABLE, EXPECTED_COHORT_SCHEMA, sql_executor)
 
@@ -106,3 +122,9 @@ def test_survival_probabilities_between_zero_and_one(tables_available, sql_execu
     assert invalid_count == 0, (
         f"Found {invalid_count} survival_probability values outside [0, 1] in {SURVIVAL_TABLE}"
     )
+
+
+def test_bronze_lineage_columns_cover_downstream_needs():
+    assert bronze._source("drug_exposure").endswith(".drug_exposure")
+    assert bronze.BRONZE_DRUG_EXPOSURE in bronze.BRONZE_TABLE_NAMES
+    assert bronze.BRONZE_CONDITION_OCCURRENCE in bronze.BRONZE_TABLE_NAMES
