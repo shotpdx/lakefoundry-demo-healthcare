@@ -6,11 +6,17 @@ include:
 
 variables:
   catalog:
-    default: sandbox_us_west_2
+    default: main
   schema:
     default: hls_demo_omop_analytics
 
+# Use an accessible workspace catalog for bundle-managed resources in this run.
+# Source OMOP tables remain referenced explicitly in transformation code.
 targets:
   dev:
     default: true
     mode: development
+    variables:
+      catalog: cme_outcomes_uswest
+      schema: lakefoundry
+
