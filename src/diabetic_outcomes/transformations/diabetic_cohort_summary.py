@@ -109,14 +109,15 @@ def _death_summary(death: DataFrame) -> DataFrame:
     death_window = Window.partitionBy("person_id").orderBy(
         F.col("death_date").cast("date").desc_nulls_last(),
         F.col("death_datetime").desc_nulls_last(),
-        F.col("bronze_ingested_at").desc_nulls_last(),
-        F.col("bronze_source_key").desc_nulls_last(),
+        F.col("death_bronze_ingested_at").desc_nulls_last(),
+        F.col("death_bronze_source_key").desc_nulls_last(),
     )
 
     return (
         death.select(
             F.col("person_id").cast("bigint").alias("person_id"),
             F.col("death_date").cast("date").alias("death_date"),
+            F.col("death_datetime").cast("timestamp").alias("death_datetime"),
             F.col("bronze_source_table").alias("death_bronze_table"),
             F.col("bronze_source_key").alias("death_bronze_source_key"),
             F.col("bronze_ingested_at").alias("death_bronze_ingested_at"),

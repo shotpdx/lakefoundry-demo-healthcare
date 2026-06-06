@@ -129,7 +129,8 @@ These Gold outputs intentionally expose explicit lineage markers back to the Sil
 - The Silver cohort keeps only records with non-negative follow-up where `observation_end_date >= treatment_start_date`.
 - Gold lineage is currently treatment-group scoped through `silver_source_table`, `silver_source_key`, `silver_lineage_layer`, and `gold_analytics_version`.
 - Task 3 owns deployment and workspace verification. The Databricks bundle now passes `databricks bundle validate` and deploys the medallion pipeline into `${var.catalog}.${var.schema}` with pipeline configuration keys `source_catalog` and `source_schema` for the upstream OMOP source location.
-- Workspace execution still depends on the configured source catalog/schema being readable and containing the expected OMOP tables (`person`, `condition_occurrence`, `drug_exposure`, `death`, `observation_period`, `concept`). Preserve failed run evidence if that upstream source is unavailable and update the bundle target variables before retrying.
+- A deterministic seeding utility now provisions the required minimal OMOP source tables into `cme_outcomes_uswest.omop_seed` by default: `python scripts/seed_omop_source_data.py`. Run that step in the workspace before `databricks bundle run diabetic_outcomes_pipeline`, or override `--catalog/--schema` and the bundle variables together if you need a different source location.
+- The seeded dataset intentionally includes diabetes diagnosis rows, the three reviewed treatment groups (Metformin, Insulin Glargine, Glipizide), valid observation windows, and mortality/follow-up behavior so Silver and Gold outputs materialize without changing medallion business logic.
 
 ### Local quality expectations for Task 2
 

@@ -10,12 +10,12 @@ variables:
   schema:
     default: lakefoundry
   source_catalog:
-    default: databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm
+    default: cme_outcomes_uswest
   source_schema:
-    default: patient_risk_altered_omop
+    default: omop_seed
 
 # Use an accessible workspace catalog/schema for bundle-managed resources.
-# The pipeline reads source OMOP tables from the transformation code constants.
+# The pipeline defaults to a deterministic seeded OMOP source in this workspace.
 targets:
   dev:
     default: true
@@ -23,6 +23,6 @@ targets:
     variables:
       catalog: cme_outcomes_uswest
       schema: lakefoundry
-      source_catalog: databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm
-      source_schema: patient_risk_altered_omop
+      source_catalog: cme_outcomes_uswest
+      source_schema: omop_seed
 

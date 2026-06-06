@@ -29,6 +29,9 @@ from diabetic_outcomes.transformations import bronze_omop as bronze
 from diabetic_outcomes.transformations import diabetic_cohort_summary as dcs
 from diabetic_outcomes.transformations import survival_statistics as ss
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import scripts.seed_omop_source_data as seed_data
+
 
 @pytest.fixture
 def spark_session():
@@ -165,6 +168,31 @@ def test_source_resolution_falls_back_to_default_catalog_and_schema(monkeypatch)
     monkeypatch.setattr(bronze, "spark", runtime_spark, raising=False)
 
     assert bronze._source("person") == f"{bronze.SOURCE_CATALOG}.{bronze.SOURCE_SCHEMA}.person"
+
+
+def test_seeded_omop_source_tables_cover_minimal_pipeline_contract():
+    assert [table.name for table in seed_data.SEED_TABLES] == [
+        "person",
+        "condition_occurrence",
+        "drug_exposure",
+        "death",
+        "observation_period",
+        "concept",
+    ]
+    assert seed_data.DEFAULT_CATALOG == "cme_outcomes_uswest"
+    assert seed_data.DEFAULT_SCHEMA == "omop_seed"
+
+    concept_lookup = {row[1]: row[2] for row in seed_data.CONCEPT.rows}
+    drug_source_values = {row[5] for row in seed_data.DRUG_EXPOSURE.rows}
+    diabetes_people = {row[1] for row in seed_data.CONDITION_OCCURRENCE.rows if row[5] == dcs.DIABETES_CONDITION_CODE}
+    observed_people = {row[1] for row in seed_data.OBSERVATION_PERIOD.rows}
+    death_people = {row[0] for row in seed_data.DEATH.rows if row[1] is not None}
+
+    assert drug_source_values == {"metformin", "insulin_glargine", "glipizide"}
+    assert {concept_lookup[value] for value in drug_source_values} == {"Metformin Hydrochloride", "Insulin Glargine", "Glipizide"}
+    assert diabetes_people == {1, 2, 3}
+    assert observed_people == {1, 2, 3}
+    assert death_people == {1, 3}
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
