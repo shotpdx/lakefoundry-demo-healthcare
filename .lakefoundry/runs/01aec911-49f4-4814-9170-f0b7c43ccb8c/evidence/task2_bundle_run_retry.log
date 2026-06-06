@@ -1,0 +1,161 @@
+Update URL: https://dbc-2fe34280-c47a.cloud.databricks.com/#joblist/pipelines/cffce3c0-1cb3-46d1-9d03-ef4cf4fbab45/updates/b06e06c7-05be-414f-a86d-59bf66d92b0c
+
+2026-06-06T06:42:02.268Z update_progress INFO "Update b06e06 is INITIALIZING."
+2026-06-06T06:42:09.759Z flow_progress   ERROR "Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_person'."
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 45, in bronze_omop_person
+    person = spark.read.table(_source("person")).select(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`person` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, person], [], false
+2026-06-06T06:42:10.023Z flow_progress   ERROR "Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_condition_occurrence'."
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 60, in bronze_omop_condition_occurrence
+    condition = spark.read.table(_source("condition_occurrence")).select(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`condition_occurrence` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, condition_occurrence], [], false
+2026-06-06T06:42:10.273Z flow_progress   ERROR "Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_drug_exposure'."
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 76, in bronze_omop_drug_exposure
+    drug = spark.read.table(_source("drug_exposure")).select(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`drug_exposure` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, drug_exposure], [], false
+2026-06-06T06:42:10.538Z flow_progress   ERROR "Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_death'."
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 92, in bronze_omop_death
+    death = spark.read.table(_source("death")).select(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`death` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, death], [], false
+2026-06-06T06:42:10.806Z flow_progress   ERROR "Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_observation_period'."
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 105, in bronze_omop_observation_period
+    observation = spark.read.table(_source("observation_period")).select(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`observation_period` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, observation_period], [], false
+2026-06-06T06:42:11.079Z flow_progress   ERROR "Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_concept'."
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 119, in bronze_omop_concept
+    concept = spark.read.table(_source("concept")).select(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`concept` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, concept], [], false
+2026-06-06T06:42:11.647Z flow_progress   WARN "Failed to resolve flow due to upstream failure: 'cme_outcomes_uswest.lakefoundry.silver_diabetic_treatment_cohort'."
+2026-06-06T06:42:11.651Z flow_progress   WARN "Failed to resolve flow due to upstream failure: 'cme_outcomes_uswest.lakefoundry.gold_diabetic_treatment_survival_curve'."
+2026-06-06T06:42:11.653Z flow_progress   WARN "Failed to resolve flow due to upstream failure: 'cme_outcomes_uswest.lakefoundry.gold_diabetic_treatment_survival_summary'."
+2026-06-06T06:42:11.671Z update_progress ERROR "Update b06e06 has failed. Failed to analyze flow 'cme_outcomes_uswest.lakefoundry.bronze_omop_person' and 5 other flow(s).."
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 45, in bronze_omop_person
+    person = spark.read.table(_source("person")).select(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`person` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, person], [], false
+Error: [flow_progress]  Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_person'.
+trace for most recent exception: 
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 45, in bronze_omop_person
+    person = spark.read.table(_source("person")).select(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`person` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, person], [], false
+
+Error: [flow_progress]  Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_condition_occurrence'.
+trace for most recent exception: 
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 60, in bronze_omop_condition_occurrence
+    condition = spark.read.table(_source("condition_occurrence")).select(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`condition_occurrence` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, condition_occurrence], [], false
+
+Error: [flow_progress]  Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_drug_exposure'.
+trace for most recent exception: 
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 76, in bronze_omop_drug_exposure
+    drug = spark.read.table(_source("drug_exposure")).select(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`drug_exposure` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, drug_exposure], [], false
+
+Error: [flow_progress]  Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_death'.
+trace for most recent exception: 
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 92, in bronze_omop_death
+    death = spark.read.table(_source("death")).select(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`death` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, death], [], false
+
+Error: [flow_progress]  Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_observation_period'.
+trace for most recent exception: 
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 105, in bronze_omop_observation_period
+    observation = spark.read.table(_source("observation_period")).select(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`observation_period` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, observation_period], [], false
+
+Error: [flow_progress]  Failed to resolve flow: 'cme_outcomes_uswest.lakefoundry.bronze_omop_concept'.
+trace for most recent exception: 
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 119, in bronze_omop_concept
+    concept = spark.read.table(_source("concept")).select(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`concept` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, concept], [], false
+
+Error: [update_progress]  Update b06e06 has failed. Failed to analyze flow 'cme_outcomes_uswest.lakefoundry.bronze_omop_person' and 5 other flow(s)..
+trace for most recent exception: 
+Traceback (most recent call last):
+  File "/Workspace/Users/cameron.shotwell@slalom.com/.bundle/diabetic-outcomes/dev/files/src/diabetic_outcomes/transformations/bronze_omop.py", cell 1, line 45, in bronze_omop_person
+    person = spark.read.table(_source("person")).select(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+pyspark.errors.exceptions.captured.AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm`.`patient_risk_altered_omop`.`person` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS. SQLSTATE: 42P01;
+'UnresolvedRelation [databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm, patient_risk_altered_omop, person], [], false
+
+Error: update failed

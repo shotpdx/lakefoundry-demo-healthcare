@@ -3,11 +3,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql import Window
 
-try:
-    from diabetic_outcomes.transformations.diabetic_cohort_summary import SILVER_DIABETIC_TREATMENT_COHORT
-except ModuleNotFoundError:  # pragma: no cover - Databricks pipeline file execution fallback
-    from diabetic_cohort_summary import SILVER_DIABETIC_TREATMENT_COHORT
-
+SILVER_DIABETIC_TREATMENT_COHORT = "silver_diabetic_treatment_cohort"
 GOLD_TREATMENT_SURVIVAL_CURVE = "gold_diabetic_treatment_survival_curve"
 GOLD_TREATMENT_SURVIVAL_SUMMARY = "gold_diabetic_treatment_survival_summary"
 
@@ -182,11 +178,3 @@ def gold_diabetic_treatment_survival_summary() -> DataFrame:
     cohort = spark.read.table(SILVER_DIABETIC_TREATMENT_COHORT)
     return build_survival_summary(cohort)
 
-
-@dp.materialized_view(
-    name="survival_statistics",
-    comment="Compatibility alias for the gold diabetic treatment survival curve.",
-)
-def survival_statistics() -> DataFrame:
-    cohort = spark.read.table(SILVER_DIABETIC_TREATMENT_COHORT)
-    return build_survival_statistics(cohort)

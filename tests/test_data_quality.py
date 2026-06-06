@@ -8,7 +8,6 @@ from diabetic_outcomes.transformations import survival_statistics as ss
 CATALOG = "lakefoundry_dev"
 SCHEMA = "hls_demo_omop_analytics"
 SILVER_COHORT_TABLE = f"{CATALOG}.{SCHEMA}.{dcs.SILVER_DIABETIC_TREATMENT_COHORT}"
-SURVIVAL_TABLE = f"{CATALOG}.{SCHEMA}.survival_statistics"
 GOLD_SURVIVAL_CURVE_TABLE = f"{CATALOG}.{SCHEMA}.{ss.GOLD_TREATMENT_SURVIVAL_CURVE}"
 GOLD_SURVIVAL_SUMMARY_TABLE = f"{CATALOG}.{SCHEMA}.{ss.GOLD_TREATMENT_SURVIVAL_SUMMARY}"
 
@@ -102,7 +101,6 @@ def _run_sql(sql: str, sql_executor):
 def tables_available(sql_executor):
     queries = {
         "cohort": f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE '{dcs.SILVER_DIABETIC_TREATMENT_COHORT}'",
-        "survival": f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE 'survival_statistics'",
         "gold_survival_curve": f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE '{ss.GOLD_TREATMENT_SURVIVAL_CURVE}'",
         "gold_survival_summary": f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE '{ss.GOLD_TREATMENT_SURVIVAL_SUMMARY}'",
     }
@@ -132,10 +130,6 @@ def test_bronze_table_set_matches_expected_medallion_inputs():
 
 def test_silver_diabetic_treatment_cohort_schema(tables_available, sql_executor):
     _assert_schema(SILVER_COHORT_TABLE, EXPECTED_COHORT_SCHEMA, sql_executor)
-
-
-def test_survival_statistics_schema(tables_available, sql_executor):
-    _assert_schema(SURVIVAL_TABLE, EXPECTED_SURVIVAL_SCHEMA, sql_executor)
 
 
 def test_gold_survival_curve_schema(tables_available, sql_executor):
@@ -170,8 +164,8 @@ def test_all_treatment_groups_represented(tables_available, sql_executor):
     )
 
 
-@pytest.mark.parametrize("table_name", [SURVIVAL_TABLE, GOLD_SURVIVAL_CURVE_TABLE])
-def test_survival_probabilities_between_zero_and_one(tables_available, table_name, sql_executor):
+def test_survival_probabilities_between_zero_and_one(tables_available, sql_executor):
+    table_name = GOLD_SURVIVAL_CURVE_TABLE
     rows = _run_sql(
         f"SELECT COUNT(*) AS invalid_count FROM {table_name} "
         "WHERE survival_probability < 0 OR survival_probability > 1 OR survival_probability IS NULL",

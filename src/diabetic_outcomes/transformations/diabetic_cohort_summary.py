@@ -3,22 +3,11 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql import Window
 
-try:
-    from diabetic_outcomes.transformations.bronze_omop import (
-        BRONZE_CONDITION_OCCURRENCE,
-        BRONZE_CONCEPT,
-        BRONZE_DEATH,
-        BRONZE_DRUG_EXPOSURE,
-        BRONZE_OBSERVATION_PERIOD,
-    )
-except ModuleNotFoundError:  # pragma: no cover - Databricks pipeline file execution fallback
-    from bronze_omop import (
-        BRONZE_CONDITION_OCCURRENCE,
-        BRONZE_CONCEPT,
-        BRONZE_DEATH,
-        BRONZE_DRUG_EXPOSURE,
-        BRONZE_OBSERVATION_PERIOD,
-    )
+BRONZE_CONDITION_OCCURRENCE = "bronze_omop_condition_occurrence"
+BRONZE_DRUG_EXPOSURE = "bronze_omop_drug_exposure"
+BRONZE_DEATH = "bronze_omop_death"
+BRONZE_OBSERVATION_PERIOD = "bronze_omop_observation_period"
+BRONZE_CONCEPT = "bronze_omop_concept"
 
 SILVER_DIABETIC_TREATMENT_COHORT = "silver_diabetic_treatment_cohort"
 DIABETES_CONDITION_CODE = "44054006"
@@ -238,10 +227,6 @@ def build_diabetic_cohort_summary(condition: DataFrame, drug: DataFrame, death: 
         observation_summary=_observation_summary(observation),
         death_summary=_death_summary(death),
     )
-
-
-def silver_diabetic_treatment_cohort() -> DataFrame:
-    return diabetic_cohort_summary()
 
 
 @dp.materialized_view(
