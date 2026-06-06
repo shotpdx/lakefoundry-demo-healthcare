@@ -147,6 +147,22 @@ def test_survival_probabilities_between_zero_and_one(tables_available, sql_execu
     )
 
 
+def test_silver_cohort_has_one_row_per_person_and_valid_follow_up_bounds(tables_available, sql_executor):
+    rows = _run_sql(
+        f"SELECT COUNT(*) AS total_rows, COUNT(DISTINCT person_id) AS distinct_people, "
+        f"SUM(CASE WHEN observation_end_date < treatment_start_date THEN 1 ELSE 0 END) AS invalid_bounds "
+        f"FROM {SILVER_COHORT_TABLE}",
+        sql_executor,
+    )
+    row = rows[0]
+    assert row["total_rows"] == row["distinct_people"], (
+        f"Expected one row per person in {SILVER_COHORT_TABLE}, got {row['total_rows']} rows for {row['distinct_people']} people"
+    )
+    assert row["invalid_bounds"] == 0, (
+        f"Found {row['invalid_bounds']} rows where observation_end_date precedes treatment_start_date in {SILVER_COHORT_TABLE}"
+    )
+
+
 def test_bronze_lineage_columns_cover_downstream_needs():
     assert bronze._source("drug_exposure").endswith(".drug_exposure")
     assert bronze.BRONZE_DRUG_EXPOSURE in bronze.BRONZE_TABLE_NAMES

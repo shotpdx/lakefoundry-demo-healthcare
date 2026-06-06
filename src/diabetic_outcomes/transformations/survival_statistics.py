@@ -13,24 +13,27 @@ def _km_ci_expr(survival_col: str, variance_col: str, z: float, upper: bool) -> 
     return F.greatest(F.lit(0.0), F.col(survival_col) - F.lit(z) * se)
 
 
-@dp.materialized_view(
-    name="survival_statistics",
-    comment="Kaplan-Meier survival statistics by treatment group",
-)
-def survival_statistics() -> DataFrame:
-    cohort = spark.read.table(SILVER_DIABETIC_TREATMENT_COHORT)
+def _follow_up_end_date() -> F.Column:
+    death_date = F.col("date_of_death").cast("date")
+    observation_end_date = F.col("observation_end_date").cast("date")
 
+    return F.when(F.col("mortality_status") == 1, death_date).otherwise(observation_end_date)
+
+
+def _valid_follow_up_time() -> F.Column:
+    return F.datediff(_follow_up_end_date(), F.col("treatment_start_date").cast("date"))
+
+
+def build_survival_statistics(cohort: DataFrame) -> DataFrame:
     events = (
         cohort.select(
             "treatment_group",
             F.col("person_id").cast("bigint").alias("person_id"),
-            F.when(F.col("mortality_status") == 1, F.datediff(F.col("date_of_death"), F.col("treatment_start_date"))).otherwise(
-                F.datediff(F.col("observation_end_date"), F.col("treatment_start_date"))
-            ).cast("int").alias("time_to_event"),
+            _valid_follow_up_time().cast("int").alias("time_to_event"),
             F.col("mortality_status").cast("int").alias("event"),
         )
         .filter(F.col("time_to_event").isNotNull())
-        .withColumn("time_to_event", F.greatest(F.col("time_to_event"), F.lit(0)))
+        .filter(F.col("time_to_event") > 0)
     )
 
     time_grid = events.select("treatment_group", F.col("time_to_event").alias("time_point")).distinct()
@@ -69,3 +72,12 @@ def survival_statistics() -> DataFrame:
         F.col("num_at_risk").cast("long").alias("num_at_risk"),
         F.col("num_events").cast("long").alias("num_events"),
     )
+
+
+@dp.materialized_view(
+    name="survival_statistics",
+    comment="Kaplan-Meier survival statistics by treatment group",
+)
+def survival_statistics() -> DataFrame:
+    cohort = spark.read.table(SILVER_DIABETIC_TREATMENT_COHORT)
+    return build_survival_statistics(cohort)
