@@ -12,6 +12,6 @@ resources:
         - file:
             path: ../src/diabetic_outcomes/transformations/survival_statistics.py
       serverless: true
-      development: true
+      development: false
       continuous: false
       channel: current
