@@ -7,9 +7,20 @@ Example:
     LAKEFOUNDRY_SQL_EXECUTOR=my_module:execute_sql
 """
 import os
+import sys
+import types
 from typing import Any, Callable
 
 import pytest
+
+
+try:
+    from pyspark import pipelines as _pipelines  # noqa: F401
+except Exception:
+    sys.modules.setdefault(
+        "pyspark.pipelines",
+        types.SimpleNamespace(materialized_view=lambda **kwargs: (lambda func: func)),
+    )
 
 
 @pytest.fixture(scope="module")
