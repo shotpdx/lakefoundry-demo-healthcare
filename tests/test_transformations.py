@@ -263,7 +263,7 @@ def test_bronze_omop_death_source_key_includes_datetime(spark_session, monkeypat
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
-def test_survival_statistics_counts_events_exactly_at_time_point(spark_session):
+def test_gold_survival_curve_counts_events_exactly_at_time_point(spark_session):
     spark = spark_session
     cohort = spark.createDataFrame([
         (1, "identity-1", "Metformin", "2020-01-01", "2020-01-10", 1, "2020-01-10"),
@@ -272,13 +272,15 @@ def test_survival_statistics_counts_events_exactly_at_time_point(spark_session):
     ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
 
     out = ss.build_survival_statistics(cohort).collect()
-    rows = {r.time_point: r for r in out}
+    rows = {r.time_to_event_days: r for r in out}
     assert rows[9].num_events == 2
     assert rows[19].num_events == 0
+    assert rows[9].silver_source_table == dcs.SILVER_DIABETIC_TREATMENT_COHORT
+    assert rows[9].survival_percent == pytest.approx(rows[9].survival_probability * 100.0)
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
-def test_survival_statistics_excludes_non_positive_follow_up_windows(spark_session):
+def test_gold_survival_curve_excludes_non_positive_follow_up_windows(spark_session):
     spark = spark_session
     cohort = spark.createDataFrame([
         (1, "identity-1", "Metformin", "2020-01-01", "2020-01-01", 1, "2020-01-01"),
@@ -288,10 +290,51 @@ def test_survival_statistics_excludes_non_positive_follow_up_windows(spark_sessi
     ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
 
     out = ss.build_survival_statistics(cohort).collect()
-    rows = {r.time_point: r for r in out}
+    rows = {r.time_to_event_days: r for r in out}
 
     assert set(rows) == {4, 9}
     assert rows[4].num_events == 1
     assert rows[4].num_at_risk == 2
     assert rows[9].num_events == 0
     assert rows[9].num_at_risk == 1
+
+
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_gold_survival_summary_provides_business_ready_treatment_rollup(spark_session):
+    spark = spark_session
+    cohort = spark.createDataFrame([
+        (1, "identity-1", "Metformin", "2020-01-01", "2020-01-10", 1, "2020-01-10"),
+        (2, "identity-2", "Metformin", "2020-01-01", "2020-01-20", 0, None),
+        (3, "identity-3", "Glipizide", "2020-01-01", "2020-01-08", 1, "2020-01-08"),
+        (4, "identity-4", "Glipizide", "2020-01-01", "2020-01-12", 1, "2020-01-12"),
+    ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
+
+    out = {row.treatment_group: row for row in ss.build_survival_summary(cohort).collect()}
+
+    metformin = out["Metformin"]
+    assert metformin.silver_source_table == dcs.SILVER_DIABETIC_TREATMENT_COHORT
+    assert metformin.cohort_size == 2
+    assert metformin.total_events == 1
+    assert metformin.event_rate == pytest.approx(0.5)
+    assert metformin.event_rate_percent == pytest.approx(50.0)
+    assert metformin.latest_time_point_days == 19
+    assert metformin.latest_survival_probability == pytest.approx(0.5)
+    assert metformin.latest_survival_percent == pytest.approx(50.0)
+    assert metformin.median_survival_days == 9
+    assert metformin.median_survival_reached is True
+
+    glipizide = out["Glipizide"]
+    assert glipizide.cohort_size == 2
+    assert glipizide.total_events == 2
+    assert glipizide.event_rate == pytest.approx(1.0)
+    assert glipizide.median_survival_days == 7
+    assert glipizide.median_survival_reached is True
+    assert glipizide.latest_num_at_risk == 1
+    assert glipizide.latest_num_events == 1
+
+
+def test_gold_asset_names_follow_medallion_conventions():
+    assert ss.GOLD_TREATMENT_SURVIVAL_CURVE == "gold_diabetic_treatment_survival_curve"
+    assert ss.GOLD_TREATMENT_SURVIVAL_SUMMARY == "gold_diabetic_treatment_survival_summary"
+    assert ss.GOLD_TREATMENT_SURVIVAL_CURVE.startswith("gold_")
+    assert ss.GOLD_TREATMENT_SURVIVAL_SUMMARY.startswith("gold_")

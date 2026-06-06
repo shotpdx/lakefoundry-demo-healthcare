@@ -3,11 +3,14 @@ import pytest
 
 from diabetic_outcomes.transformations import bronze_omop as bronze
 from diabetic_outcomes.transformations import diabetic_cohort_summary as dcs
+from diabetic_outcomes.transformations import survival_statistics as ss
 
 CATALOG = "lakefoundry_dev"
 SCHEMA = "hls_demo_omop_analytics"
 SILVER_COHORT_TABLE = f"{CATALOG}.{SCHEMA}.{dcs.SILVER_DIABETIC_TREATMENT_COHORT}"
 SURVIVAL_TABLE = f"{CATALOG}.{SCHEMA}.survival_statistics"
+GOLD_SURVIVAL_CURVE_TABLE = f"{CATALOG}.{SCHEMA}.{ss.GOLD_TREATMENT_SURVIVAL_CURVE}"
+GOLD_SURVIVAL_SUMMARY_TABLE = f"{CATALOG}.{SCHEMA}.{ss.GOLD_TREATMENT_SURVIVAL_SUMMARY}"
 
 BRONZE_TABLES = [
     bronze.BRONZE_PERSON,
@@ -51,12 +54,34 @@ EXPECTED_COHORT_SCHEMA = [
 
 EXPECTED_SURVIVAL_SCHEMA = [
     ("treatment_group", "string"),
-    ("time_point", "int"),
+    ("silver_source_table", "string"),
+    ("time_to_event_days", "int"),
     ("survival_probability", "double"),
+    ("survival_percent", "double"),
     ("lower_ci", "double"),
     ("upper_ci", "double"),
+    ("confidence_interval_width", "double"),
     ("num_at_risk", "bigint"),
     ("num_events", "bigint"),
+]
+
+EXPECTED_GOLD_SUMMARY_SCHEMA = [
+    ("treatment_group", "string"),
+    ("silver_source_table", "string"),
+    ("cohort_size", "bigint"),
+    ("total_events", "bigint"),
+    ("event_rate", "double"),
+    ("event_rate_percent", "double"),
+    ("avg_follow_up_days", "double"),
+    ("median_follow_up_days", "int"),
+    ("max_follow_up_days", "int"),
+    ("median_survival_days", "int"),
+    ("median_survival_reached", "boolean"),
+    ("latest_time_point_days", "int"),
+    ("latest_survival_probability", "double"),
+    ("latest_survival_percent", "double"),
+    ("latest_num_at_risk", "bigint"),
+    ("latest_num_events", "bigint"),
 ]
 
 REQUIRED_TREATMENT_GROUPS = {
@@ -78,9 +103,11 @@ def tables_available(sql_executor):
     queries = {
         "cohort": f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE '{dcs.SILVER_DIABETIC_TREATMENT_COHORT}'",
         "survival": f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE 'survival_statistics'",
+        "gold_survival_curve": f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE '{ss.GOLD_TREATMENT_SURVIVAL_CURVE}'",
+        "gold_survival_summary": f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE '{ss.GOLD_TREATMENT_SURVIVAL_SUMMARY}'",
     }
     results = {name: _run_sql(sql, sql_executor) for name, sql in queries.items()}
-    if not results["cohort"] or not results["survival"]:
+    if not all(results.values()):
         pytest.skip("Validation tables do not exist yet in Unity Catalog")
     return True
 
@@ -111,6 +138,14 @@ def test_survival_statistics_schema(tables_available, sql_executor):
     _assert_schema(SURVIVAL_TABLE, EXPECTED_SURVIVAL_SCHEMA, sql_executor)
 
 
+def test_gold_survival_curve_schema(tables_available, sql_executor):
+    _assert_schema(GOLD_SURVIVAL_CURVE_TABLE, EXPECTED_SURVIVAL_SCHEMA, sql_executor)
+
+
+def test_gold_survival_summary_schema(tables_available, sql_executor):
+    _assert_schema(GOLD_SURVIVAL_SUMMARY_TABLE, EXPECTED_GOLD_SUMMARY_SCHEMA, sql_executor)
+
+
 @pytest.mark.parametrize(
     "table_name,critical_columns",
     [
@@ -135,15 +170,16 @@ def test_all_treatment_groups_represented(tables_available, sql_executor):
     )
 
 
-def test_survival_probabilities_between_zero_and_one(tables_available, sql_executor):
+@pytest.mark.parametrize("table_name", [SURVIVAL_TABLE, GOLD_SURVIVAL_CURVE_TABLE])
+def test_survival_probabilities_between_zero_and_one(tables_available, table_name, sql_executor):
     rows = _run_sql(
-        f"SELECT COUNT(*) AS invalid_count FROM {SURVIVAL_TABLE} "
+        f"SELECT COUNT(*) AS invalid_count FROM {table_name} "
         "WHERE survival_probability < 0 OR survival_probability > 1 OR survival_probability IS NULL",
         sql_executor,
     )
     invalid_count = rows[0]["invalid_count"]
     assert invalid_count == 0, (
-        f"Found {invalid_count} survival_probability values outside [0, 1] in {SURVIVAL_TABLE}"
+        f"Found {invalid_count} survival_probability values outside [0, 1] in {table_name}"
     )
 
 
@@ -177,6 +213,38 @@ def test_treatment_mapping_configuration_is_explicit():
     }
 
 
+def test_gold_assets_reference_silver_lineage_explicitly(tables_available, sql_executor):
+    rows = _run_sql(
+        f"SELECT COUNT(*) AS invalid_count FROM {GOLD_SURVIVAL_CURVE_TABLE} "
+        f"WHERE silver_source_table <> '{dcs.SILVER_DIABETIC_TREATMENT_COHORT}' OR silver_source_table IS NULL",
+        sql_executor,
+    )
+    assert rows[0]["invalid_count"] == 0
+
+    rows = _run_sql(
+        f"SELECT COUNT(*) AS invalid_count FROM {GOLD_SURVIVAL_SUMMARY_TABLE} "
+        f"WHERE silver_source_table <> '{dcs.SILVER_DIABETIC_TREATMENT_COHORT}' OR silver_source_table IS NULL",
+        sql_executor,
+    )
+    assert rows[0]["invalid_count"] == 0
+
+
+def test_gold_summary_metrics_are_business_ready(tables_available, sql_executor):
+    rows = _run_sql(
+        f"SELECT COUNT(*) AS invalid_count FROM {GOLD_SURVIVAL_SUMMARY_TABLE} "
+        "WHERE cohort_size <= 0 "
+        "OR total_events < 0 "
+        "OR event_rate < 0 OR event_rate > 1 "
+        "OR event_rate_percent < 0 OR event_rate_percent > 100 "
+        "OR latest_survival_probability < 0 OR latest_survival_probability > 1 "
+        "OR latest_survival_percent < 0 OR latest_survival_percent > 100",
+        sql_executor,
+    )
+    assert rows[0]["invalid_count"] == 0
+
+
 def test_silver_asset_name_follows_medallion_conventions():
     assert dcs.SILVER_DIABETIC_TREATMENT_COHORT.startswith("silver_")
     assert dcs.SILVER_DIABETIC_TREATMENT_COHORT == "silver_diabetic_treatment_cohort"
+    assert ss.GOLD_TREATMENT_SURVIVAL_CURVE.startswith("gold_")
+    assert ss.GOLD_TREATMENT_SURVIVAL_SUMMARY.startswith("gold_")
