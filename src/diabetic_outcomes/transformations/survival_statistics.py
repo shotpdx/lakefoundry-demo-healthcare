@@ -3,7 +3,10 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql import Window
 
-from diabetic_outcomes.transformations.diabetic_cohort_summary import SILVER_DIABETIC_TREATMENT_COHORT
+try:
+    from diabetic_outcomes.transformations.diabetic_cohort_summary import SILVER_DIABETIC_TREATMENT_COHORT
+except ModuleNotFoundError:  # pragma: no cover - Databricks pipeline file execution fallback
+    from diabetic_cohort_summary import SILVER_DIABETIC_TREATMENT_COHORT
 
 GOLD_TREATMENT_SURVIVAL_CURVE = "gold_diabetic_treatment_survival_curve"
 GOLD_TREATMENT_SURVIVAL_SUMMARY = "gold_diabetic_treatment_survival_summary"

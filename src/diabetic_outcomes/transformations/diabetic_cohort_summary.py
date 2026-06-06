@@ -3,13 +3,22 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql import Window
 
-from diabetic_outcomes.transformations.bronze_omop import (
-    BRONZE_CONDITION_OCCURRENCE,
-    BRONZE_CONCEPT,
-    BRONZE_DEATH,
-    BRONZE_DRUG_EXPOSURE,
-    BRONZE_OBSERVATION_PERIOD,
-)
+try:
+    from diabetic_outcomes.transformations.bronze_omop import (
+        BRONZE_CONDITION_OCCURRENCE,
+        BRONZE_CONCEPT,
+        BRONZE_DEATH,
+        BRONZE_DRUG_EXPOSURE,
+        BRONZE_OBSERVATION_PERIOD,
+    )
+except ModuleNotFoundError:  # pragma: no cover - Databricks pipeline file execution fallback
+    from bronze_omop import (
+        BRONZE_CONDITION_OCCURRENCE,
+        BRONZE_CONCEPT,
+        BRONZE_DEATH,
+        BRONZE_DRUG_EXPOSURE,
+        BRONZE_OBSERVATION_PERIOD,
+    )
 
 SILVER_DIABETIC_TREATMENT_COHORT = "silver_diabetic_treatment_cohort"
 DIABETES_CONDITION_CODE = "44054006"
