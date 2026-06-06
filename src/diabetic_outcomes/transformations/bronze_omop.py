@@ -4,7 +4,8 @@ from pyspark.sql import functions as F
 
 SOURCE_CATALOG = "databricks_observational_medical_outcomes_partnership_omop_common_data_model_cdm"
 SOURCE_SCHEMA = "patient_risk_altered_omop"
-SOURCE_PREFIX = f"{SOURCE_CATALOG}.{SOURCE_SCHEMA}"
+SOURCE_CATALOG_CONFIG_KEY = "source_catalog"
+SOURCE_SCHEMA_CONFIG_KEY = "source_schema"
 
 BRONZE_PERSON = "bronze_omop_person"
 BRONZE_CONDITION_OCCURRENCE = "bronze_omop_condition_occurrence"
@@ -31,8 +32,28 @@ SILVER_REQUIRED_BRONZE_TABLES = (
 )
 
 
+def _get_source_setting(config_key: str, fallback: str) -> str:
+    configured_value = fallback
+
+    try:
+        configured_value = spark.conf.get(config_key, fallback)
+    except Exception:
+        try:
+            configured_value = spark.conf.get(f"pipelines.{config_key}", fallback)
+        except Exception:
+            configured_value = fallback
+
+    return configured_value or fallback
+
+
+def _source_prefix() -> str:
+    source_catalog = _get_source_setting(SOURCE_CATALOG_CONFIG_KEY, SOURCE_CATALOG)
+    source_schema = _get_source_setting(SOURCE_SCHEMA_CONFIG_KEY, SOURCE_SCHEMA)
+    return f"{source_catalog}.{source_schema}"
+
+
 def _source(table_name: str) -> str:
-    return f"{SOURCE_PREFIX}.{table_name}"
+    return f"{_source_prefix()}.{table_name}"
 
 
 def _with_bronze_metadata(df: DataFrame, source_table: str, key_columns: tuple[str, ...]) -> DataFrame:

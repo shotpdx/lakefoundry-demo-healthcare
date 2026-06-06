@@ -122,6 +122,51 @@ def test_bronze_person_and_concept_support_silver_identity_and_treatment_conform
     assert bronze_concept[0].bronze_source_key == "111"
 
 
+def test_source_resolution_uses_runtime_configuration_over_defaults(monkeypatch):
+    class Conf:
+        def __init__(self, values):
+            self.values = values
+
+        def get(self, key, default=None):
+            if key in self.values:
+                return self.values[key]
+            raise Exception(f"missing config: {key}")
+
+    runtime_spark = MagicMock(conf=Conf({"source_catalog": "configured_catalog", "source_schema": "configured_schema"}))
+    monkeypatch.setattr(bronze, "spark", runtime_spark, raising=False)
+
+    assert bronze._source("person") == "configured_catalog.configured_schema.person"
+
+
+def test_source_resolution_uses_pipeline_prefixed_runtime_configuration(monkeypatch):
+    class Conf:
+        def __init__(self, values):
+            self.values = values
+
+        def get(self, key, default=None):
+            if key in self.values:
+                return self.values[key]
+            raise Exception(f"missing config: {key}")
+
+    runtime_spark = MagicMock(
+        conf=Conf({
+            "pipelines.source_catalog": "pipeline_catalog",
+            "pipelines.source_schema": "pipeline_schema",
+        })
+    )
+    monkeypatch.setattr(bronze, "spark", runtime_spark, raising=False)
+
+    assert bronze._source("concept") == "pipeline_catalog.pipeline_schema.concept"
+
+
+def test_source_resolution_falls_back_to_default_catalog_and_schema(monkeypatch):
+    runtime_spark = MagicMock()
+    runtime_spark.conf.get.side_effect = Exception("config unavailable")
+    monkeypatch.setattr(bronze, "spark", runtime_spark, raising=False)
+
+    assert bronze._source("person") == f"{bronze.SOURCE_CATALOG}.{bronze.SOURCE_SCHEMA}.person"
+
+
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
 def test_bronze_table_names_cover_all_required_silver_inputs():
     assert bronze.BRONZE_TABLE_NAMES == (
@@ -142,6 +187,8 @@ def test_bronze_table_names_cover_all_required_silver_inputs():
     assert bronze.BRONZE_PERSON in bronze.BRONZE_TABLE_NAMES
     assert len(bronze.BRONZE_TABLE_NAMES) == len(set(bronze.BRONZE_TABLE_NAMES))
     assert all(name.startswith("bronze_omop_") for name in bronze.BRONZE_TABLE_NAMES)
+    assert bronze.BRONZE_CONCEPT == "bronze_omop_concept"
+    assert bronze._source("concept").rsplit(".", 1)[-1] == "concept"
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
