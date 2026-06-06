@@ -530,6 +530,9 @@ def test_gold_survival_curve_counts_events_exactly_at_time_point(spark_session):
     assert rows[9].num_events == 2
     assert rows[19].num_events == 0
     assert rows[9].silver_source_table == dcs.SILVER_DIABETIC_TREATMENT_COHORT
+    assert rows[9].silver_source_key == f"{dcs.SILVER_DIABETIC_TREATMENT_COHORT}::Metformin"
+    assert rows[9].silver_lineage_layer == "silver"
+    assert rows[9].gold_analytics_version == "v1"
     assert rows[9].survival_percent == pytest.approx(rows[9].survival_probability * 100.0)
 
 
@@ -565,12 +568,15 @@ def test_gold_survival_summary_uses_deterministic_latest_metrics_on_ties(spark_s
     ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
 
     tied_curve = spark.createDataFrame([
-        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, 9, 0.4, 40.0, 0.2, 0.6, 0.4, 1, 1),
-        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, 9, 0.8, 80.0, 0.7, 0.9, 0.2, 2, 0),
-        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, 5, 0.9, 90.0, 0.8, 1.0, 0.2, 2, 0),
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, "silver_diabetic_treatment_cohort::Metformin", "silver", "v1", 9, 0.4, 40.0, 0.2, 0.6, 0.4, 1, 1),
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, "silver_diabetic_treatment_cohort::Metformin", "silver", "v1", 9, 0.8, 80.0, 0.7, 0.9, 0.2, 2, 0),
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, "silver_diabetic_treatment_cohort::Metformin", "silver", "v1", 5, 0.9, 90.0, 0.8, 1.0, 0.2, 2, 0),
     ], [
         "treatment_group",
         "silver_source_table",
+        "silver_source_key",
+        "silver_lineage_layer",
+        "gold_analytics_version",
         "time_to_event_days",
         "survival_probability",
         "survival_percent",
@@ -606,6 +612,9 @@ def test_gold_survival_summary_provides_business_ready_treatment_rollup(spark_se
 
     metformin = out["Metformin"]
     assert metformin.silver_source_table == dcs.SILVER_DIABETIC_TREATMENT_COHORT
+    assert metformin.silver_source_key == f"{dcs.SILVER_DIABETIC_TREATMENT_COHORT}::Metformin"
+    assert metformin.silver_lineage_layer == "silver"
+    assert metformin.gold_analytics_version == "v1"
     assert metformin.cohort_size == 2
     assert metformin.total_events == 1
     assert metformin.event_rate == pytest.approx(0.5)
@@ -626,8 +635,27 @@ def test_gold_survival_summary_provides_business_ready_treatment_rollup(spark_se
     assert glipizide.latest_num_events == 1
 
 
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_gold_survival_assets_publish_business_friendly_column_contracts(spark_session):
+    spark = spark_session
+    cohort = spark.createDataFrame([
+        (1, "identity-1", "Metformin", "2020-01-01", "2020-01-10", 1, "2020-01-10"),
+        (2, "identity-2", "Metformin", "2020-01-01", "2020-01-20", 0, None),
+    ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
+
+    curve_df = ss.build_survival_statistics(cohort)
+    summary_df = ss.build_survival_summary(cohort)
+
+    assert curve_df.columns == list(ss.SURVIVAL_CURVE_COLUMNS)
+    assert summary_df.columns == list(ss.SUMMARY_COLUMNS)
+    assert {"survival_percent", "confidence_interval_width", "num_at_risk", "num_events"}.issubset(curve_df.columns)
+    assert {"cohort_size", "event_rate_percent", "median_survival_reached", "latest_survival_percent"}.issubset(summary_df.columns)
+
+
 def test_gold_asset_names_follow_medallion_conventions():
     assert ss.GOLD_TREATMENT_SURVIVAL_CURVE == "gold_diabetic_treatment_survival_curve"
     assert ss.GOLD_TREATMENT_SURVIVAL_SUMMARY == "gold_diabetic_treatment_survival_summary"
     assert ss.GOLD_TREATMENT_SURVIVAL_CURVE.startswith("gold_")
     assert ss.GOLD_TREATMENT_SURVIVAL_SUMMARY.startswith("gold_")
+    assert ss.GOLD_SURVIVAL_LINEAGE_LAYER == "silver"
+    assert ss.GOLD_SURVIVAL_ANALYTICS_VERSION == "v1"

@@ -54,6 +54,9 @@ EXPECTED_COHORT_SCHEMA = [
 EXPECTED_SURVIVAL_SCHEMA = [
     ("treatment_group", "string"),
     ("silver_source_table", "string"),
+    ("silver_source_key", "string"),
+    ("silver_lineage_layer", "string"),
+    ("gold_analytics_version", "string"),
     ("time_to_event_days", "int"),
     ("survival_probability", "double"),
     ("survival_percent", "double"),
@@ -67,6 +70,9 @@ EXPECTED_SURVIVAL_SCHEMA = [
 EXPECTED_GOLD_SUMMARY_SCHEMA = [
     ("treatment_group", "string"),
     ("silver_source_table", "string"),
+    ("silver_source_key", "string"),
+    ("silver_lineage_layer", "string"),
+    ("gold_analytics_version", "string"),
     ("cohort_size", "bigint"),
     ("total_events", "bigint"),
     ("event_rate", "double"),
@@ -231,14 +237,24 @@ def test_treatment_mapping_configuration_is_explicit():
 def test_gold_assets_reference_silver_lineage_explicitly(tables_available, sql_executor):
     rows = _run_sql(
         f"SELECT COUNT(*) AS invalid_count FROM {GOLD_SURVIVAL_CURVE_TABLE} "
-        f"WHERE silver_source_table <> '{dcs.SILVER_DIABETIC_TREATMENT_COHORT}' OR silver_source_table IS NULL",
+        f"WHERE silver_source_table <> '{dcs.SILVER_DIABETIC_TREATMENT_COHORT}' "
+        f"OR silver_source_table IS NULL "
+        f"OR silver_source_key IS NULL "
+        f"OR silver_source_key <> CONCAT('{dcs.SILVER_DIABETIC_TREATMENT_COHORT}', '::', treatment_group) "
+        f"OR silver_lineage_layer <> '{ss.GOLD_SURVIVAL_LINEAGE_LAYER}' "
+        f"OR gold_analytics_version <> '{ss.GOLD_SURVIVAL_ANALYTICS_VERSION}'",
         sql_executor,
     )
     assert rows[0]["invalid_count"] == 0
 
     rows = _run_sql(
         f"SELECT COUNT(*) AS invalid_count FROM {GOLD_SURVIVAL_SUMMARY_TABLE} "
-        f"WHERE silver_source_table <> '{dcs.SILVER_DIABETIC_TREATMENT_COHORT}' OR silver_source_table IS NULL",
+        f"WHERE silver_source_table <> '{dcs.SILVER_DIABETIC_TREATMENT_COHORT}' "
+        f"OR silver_source_table IS NULL "
+        f"OR silver_source_key IS NULL "
+        f"OR silver_source_key <> CONCAT('{dcs.SILVER_DIABETIC_TREATMENT_COHORT}', '::', treatment_group) "
+        f"OR silver_lineage_layer <> '{ss.GOLD_SURVIVAL_LINEAGE_LAYER}' "
+        f"OR gold_analytics_version <> '{ss.GOLD_SURVIVAL_ANALYTICS_VERSION}'",
         sql_executor,
     )
     assert rows[0]["invalid_count"] == 0
@@ -249,10 +265,55 @@ def test_gold_summary_metrics_are_business_ready(tables_available, sql_executor)
         f"SELECT COUNT(*) AS invalid_count FROM {GOLD_SURVIVAL_SUMMARY_TABLE} "
         "WHERE cohort_size <= 0 "
         "OR total_events < 0 "
+        "OR total_events > cohort_size "
         "OR event_rate < 0 OR event_rate > 1 "
-        "OR event_rate_percent < 0 OR event_rate_percent > 100 "
+        "OR ABS(event_rate_percent - (event_rate * 100)) > 0.0001 "
+        "OR avg_follow_up_days < 0 "
+        "OR median_follow_up_days < 0 "
+        "OR max_follow_up_days < 0 "
+        "OR median_follow_up_days > max_follow_up_days "
+        "OR latest_time_point_days < 0 "
+        "OR latest_num_at_risk <= 0 "
+        "OR latest_num_events < 0 "
+        "OR latest_num_events > latest_num_at_risk "
         "OR latest_survival_probability < 0 OR latest_survival_probability > 1 "
+        "OR ABS(latest_survival_percent - (latest_survival_probability * 100)) > 0.0001 "
         "OR latest_survival_percent < 0 OR latest_survival_percent > 100",
+        sql_executor,
+    )
+    assert rows[0]["invalid_count"] == 0
+
+
+def test_gold_survival_curve_quality_thresholds_are_business_ready(tables_available, sql_executor):
+    rows = _run_sql(
+        f"SELECT COUNT(*) AS invalid_count FROM {GOLD_SURVIVAL_CURVE_TABLE} "
+        "WHERE time_to_event_days < 0 "
+        "OR num_at_risk <= 0 "
+        "OR num_events < 0 "
+        "OR num_events > num_at_risk "
+        "OR lower_ci < 0 OR lower_ci > 1 "
+        "OR upper_ci < 0 OR upper_ci > 1 "
+        "OR lower_ci > upper_ci "
+        "OR confidence_interval_width < 0 "
+        "OR ABS(survival_percent - (survival_probability * 100)) > 0.0001",
+        sql_executor,
+    )
+    assert rows[0]["invalid_count"] == 0
+
+
+def test_silver_quality_thresholds_match_business_ready_expectations(tables_available, sql_executor):
+    rows = _run_sql(
+        f"SELECT COUNT(*) AS invalid_count FROM {SILVER_COHORT_TABLE} "
+        "WHERE diabetes_condition_bronze_table IS NULL "
+        "OR drug_exposure_bronze_table IS NULL "
+        "OR observation_period_bronze_table IS NULL "
+        "OR diabetes_condition_bronze_source_key IS NULL "
+        "OR drug_exposure_bronze_source_key IS NULL "
+        "OR observation_period_bronze_source_key IS NULL "
+        "OR silver_conformed_at IS NULL "
+        "OR mortality_status NOT IN (0, 1) "
+        "OR (mortality_status = 1 AND date_of_death IS NULL) "
+        "OR (mortality_status = 0 AND date_of_death IS NOT NULL)",
         sql_executor,
     )
     assert rows[0]["invalid_count"] == 0

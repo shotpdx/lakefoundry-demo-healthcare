@@ -6,6 +6,55 @@ from pyspark.sql import Window
 SILVER_DIABETIC_TREATMENT_COHORT = "silver_diabetic_treatment_cohort"
 GOLD_TREATMENT_SURVIVAL_CURVE = "gold_diabetic_treatment_survival_curve"
 GOLD_TREATMENT_SURVIVAL_SUMMARY = "gold_diabetic_treatment_survival_summary"
+GOLD_SURVIVAL_LINEAGE_LAYER = "silver"
+GOLD_SURVIVAL_ANALYTICS_VERSION = "v1"
+
+
+SURVIVAL_CURVE_COLUMNS = (
+    "treatment_group",
+    "silver_source_table",
+    "silver_source_key",
+    "silver_lineage_layer",
+    "gold_analytics_version",
+    "time_to_event_days",
+    "survival_probability",
+    "survival_percent",
+    "lower_ci",
+    "upper_ci",
+    "confidence_interval_width",
+    "num_at_risk",
+    "num_events",
+)
+
+SUMMARY_COLUMNS = (
+    "treatment_group",
+    "silver_source_table",
+    "silver_source_key",
+    "silver_lineage_layer",
+    "gold_analytics_version",
+    "cohort_size",
+    "total_events",
+    "event_rate",
+    "event_rate_percent",
+    "avg_follow_up_days",
+    "median_follow_up_days",
+    "max_follow_up_days",
+    "median_survival_days",
+    "median_survival_reached",
+    "latest_time_point_days",
+    "latest_survival_probability",
+    "latest_survival_percent",
+    "latest_num_at_risk",
+    "latest_num_events",
+)
+
+
+LINEAGE_COLUMNS = {
+    "silver_source_table": F.lit(SILVER_DIABETIC_TREATMENT_COHORT),
+    "silver_source_key": F.concat_ws("::", F.lit(SILVER_DIABETIC_TREATMENT_COHORT), F.col("treatment_group")),
+    "silver_lineage_layer": F.lit(GOLD_SURVIVAL_LINEAGE_LAYER),
+    "gold_analytics_version": F.lit(GOLD_SURVIVAL_ANALYTICS_VERSION),
+}
 
 
 def _km_ci_expr(survival_col: str, variance_col: str, z: float, upper: bool) -> F.Column:
@@ -73,7 +122,10 @@ def build_survival_statistics(cohort: DataFrame) -> DataFrame:
 
     return km.select(
         "treatment_group",
-        F.lit(SILVER_DIABETIC_TREATMENT_COHORT).alias("silver_source_table"),
+        LINEAGE_COLUMNS["silver_source_table"].alias("silver_source_table"),
+        LINEAGE_COLUMNS["silver_source_key"].alias("silver_source_key"),
+        LINEAGE_COLUMNS["silver_lineage_layer"].alias("silver_lineage_layer"),
+        LINEAGE_COLUMNS["gold_analytics_version"].alias("gold_analytics_version"),
         F.col("time_point").cast("int").alias("time_to_event_days"),
         F.col("survival_probability").cast("double").alias("survival_probability"),
         F.col("survival_percent").cast("double").alias("survival_percent"),
@@ -82,7 +134,7 @@ def build_survival_statistics(cohort: DataFrame) -> DataFrame:
         F.col("confidence_interval_width").cast("double").alias("confidence_interval_width"),
         F.col("num_at_risk").cast("long").alias("num_at_risk"),
         F.col("num_events").cast("long").alias("num_events"),
-    )
+    ).select(*SURVIVAL_CURVE_COLUMNS)
 
 
 def build_survival_summary(cohort: DataFrame) -> DataFrame:
@@ -142,7 +194,10 @@ def build_survival_summary(cohort: DataFrame) -> DataFrame:
         .withColumn("median_survival_reached", F.col("median_survival_days").isNotNull())
         .select(
             "treatment_group",
-            F.lit(SILVER_DIABETIC_TREATMENT_COHORT).alias("silver_source_table"),
+            LINEAGE_COLUMNS["silver_source_table"].alias("silver_source_table"),
+            LINEAGE_COLUMNS["silver_source_key"].alias("silver_source_key"),
+            LINEAGE_COLUMNS["silver_lineage_layer"].alias("silver_lineage_layer"),
+            LINEAGE_COLUMNS["gold_analytics_version"].alias("gold_analytics_version"),
             F.col("cohort_size").cast("long").alias("cohort_size"),
             F.col("total_events").cast("long").alias("total_events"),
             F.col("event_rate").cast("double").alias("event_rate"),
@@ -157,7 +212,7 @@ def build_survival_summary(cohort: DataFrame) -> DataFrame:
             F.col("latest_survival_percent").cast("double").alias("latest_survival_percent"),
             F.col("latest_num_at_risk").cast("long").alias("latest_num_at_risk"),
             F.col("latest_num_events").cast("long").alias("latest_num_events"),
-        )
+        ).select(*SUMMARY_COLUMNS)
     )
 
 

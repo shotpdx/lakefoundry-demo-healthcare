@@ -74,14 +74,74 @@ The Silver cohort output is `silver_diabetic_treatment_cohort`. It implements:
 - audit and lineage columns back to Bronze records for diabetes, drug exposure, observation period, and death inputs
 - `patient_identity_key` and `silver_conformed_at` fields for identity and audit tracking
 
+### Gold analytics assets
+
+Task 2 adds the Gold survival analytics contract derived directly from `silver_diabetic_treatment_cohort`.
+
+#### `gold_diabetic_treatment_survival_curve`
+
+Business-friendly Kaplan-Meier style survival curve by `treatment_group` with reviewer-facing fields:
+
+- `treatment_group`
+- `silver_source_table`
+- `silver_source_key` as `silver_diabetic_treatment_cohort::<treatment_group>`
+- `silver_lineage_layer` (`silver`)
+- `gold_analytics_version` (`v1`)
+- `time_to_event_days`
+- `survival_probability`
+- `survival_percent`
+- `lower_ci`
+- `upper_ci`
+- `confidence_interval_width`
+- `num_at_risk`
+- `num_events`
+
+#### `gold_diabetic_treatment_survival_summary`
+
+Business-ready treatment rollup for downstream SQL or dashboard use:
+
+- `treatment_group`
+- `silver_source_table`
+- `silver_source_key`
+- `silver_lineage_layer`
+- `gold_analytics_version`
+- `cohort_size`
+- `total_events`
+- `event_rate`
+- `event_rate_percent`
+- `avg_follow_up_days`
+- `median_follow_up_days`
+- `max_follow_up_days`
+- `median_survival_days`
+- `median_survival_reached`
+- `latest_time_point_days`
+- `latest_survival_probability`
+- `latest_survival_percent`
+- `latest_num_at_risk`
+- `latest_num_events`
+
+These Gold outputs intentionally expose explicit lineage markers back to the Silver cohort so reviewers can validate that the analytics surface is queryable and traceable without requiring workspace deployment evidence in this task.
+
 ### Source assumptions for reviewers
 
 - Diabetes inclusion is currently based on `condition_source_value = '44054006'`.
 - Treatment conformance uses OMOP concept joins on `drug_source_value = concept_code`, with pattern-based grouping over concept name, concept code, and raw source value.
 - The Silver cohort keeps only records with non-negative follow-up where `observation_end_date >= treatment_start_date`.
-- Deployment and Databricks workspace execution are intentionally deferred; this task only claims local code and test evidence.
+- Gold lineage is currently treatment-group scoped through `silver_source_table`, `silver_source_key`, `silver_lineage_layer`, and `gold_analytics_version`.
+- Deployment and Databricks workspace execution are intentionally deferred; this task only claims local code, local tests, and task-scoped documentation.
 
-### Local verification for Task 1
+### Local quality expectations for Task 2
+
+Local tests now validate:
+
+- Gold curve metric correctness for event counting, same-day outcomes, and deterministic latest-point selection
+- Gold summary business metrics such as event rate percent, median survival, and latest survival rollups
+- explicit Gold-to-Silver lineage markers and stable business-friendly column contracts
+- Silver quality thresholds for lineage completeness, mortality consistency, and valid follow-up bounds
+- Gold quality thresholds for probability ranges, confidence interval ordering, at-risk/event count sanity, and percent-to-ratio consistency
+
+### Local verification for Tasks 1-2
 
 - `pytest tests/test_transformations.py tests/test_data_quality.py -x`
+- Do not interpret this task as completed workspace deployment; bundle deploy/run verification remains intentionally deferred to Task 3.
 
