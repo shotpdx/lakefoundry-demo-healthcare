@@ -36,7 +36,7 @@ def _gold_survival_events(cohort: DataFrame) -> DataFrame:
             F.col("mortality_status").cast("int").alias("event_indicator"),
         )
         .filter(F.col("time_to_event_days").isNotNull())
-        .filter(F.col("time_to_event_days") > 0)
+        .filter(F.col("time_to_event_days") >= 0)
     )
 
 
@@ -103,6 +103,30 @@ def build_survival_summary(cohort: DataFrame) -> DataFrame:
         )
     )
 
+    latest_curve_metrics = (
+        curve.withColumn(
+            "latest_rank",
+            F.row_number().over(
+                Window.partitionBy("treatment_group").orderBy(
+                    F.col("time_to_event_days").desc(),
+                    F.col("survival_probability").desc(),
+                    F.col("survival_percent").desc(),
+                    F.col("num_at_risk").desc(),
+                    F.col("num_events").desc(),
+                )
+            ),
+        )
+        .filter(F.col("latest_rank") == 1)
+        .select(
+            "treatment_group",
+            F.col("time_to_event_days").cast("int").alias("latest_time_point_days"),
+            F.col("survival_probability").cast("double").alias("latest_survival_probability"),
+            F.col("survival_percent").cast("double").alias("latest_survival_percent"),
+            F.col("num_at_risk").cast("long").alias("latest_num_at_risk"),
+            F.col("num_events").cast("long").alias("latest_num_events"),
+        )
+    )
+
     return (
         events.groupBy("treatment_group")
         .agg(
@@ -112,18 +136,7 @@ def build_survival_summary(cohort: DataFrame) -> DataFrame:
             F.expr("percentile_approx(time_to_event_days, 0.5)").cast("int").alias("median_follow_up_days"),
             F.max("time_to_event_days").cast("int").alias("max_follow_up_days"),
         )
-        .join(
-            curve.groupBy("treatment_group")
-            .agg(
-                F.max("time_to_event_days").cast("int").alias("latest_time_point_days"),
-                F.max_by(F.col("survival_probability"), F.col("time_to_event_days")).cast("double").alias("latest_survival_probability"),
-                F.max_by(F.col("survival_percent"), F.col("time_to_event_days")).cast("double").alias("latest_survival_percent"),
-                F.max_by(F.col("num_at_risk"), F.col("time_to_event_days")).cast("long").alias("latest_num_at_risk"),
-                F.max_by(F.col("num_events"), F.col("time_to_event_days")).cast("long").alias("latest_num_events"),
-            ),
-            "treatment_group",
-            "inner",
-        )
+        .join(latest_curve_metrics, "treatment_group", "inner")
         .join(median_candidates, "treatment_group", "left")
         .withColumn("event_rate", F.when(F.col("cohort_size") > 0, F.col("total_events") / F.col("cohort_size")).otherwise(F.lit(0.0)))
         .withColumn("event_rate_percent", (F.col("event_rate") * F.lit(100.0)).cast("double"))

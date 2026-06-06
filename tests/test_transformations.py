@@ -280,23 +280,62 @@ def test_gold_survival_curve_counts_events_exactly_at_time_point(spark_session):
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
-def test_gold_survival_curve_excludes_non_positive_follow_up_windows(spark_session):
+def test_gold_survival_curve_keeps_same_day_outcomes_and_excludes_negative_follow_up(spark_session):
     spark = spark_session
     cohort = spark.createDataFrame([
         (1, "identity-1", "Metformin", "2020-01-01", "2020-01-01", 1, "2020-01-01"),
         (2, "identity-2", "Metformin", "2020-01-01", "2020-01-05", 1, "2020-01-05"),
         (3, "identity-3", "Metformin", "2020-01-01", "2020-01-01", 0, None),
         (4, "identity-4", "Metformin", "2020-01-01", "2020-01-10", 0, None),
+        (5, "identity-5", "Metformin", "2020-01-02", "2020-01-01", 0, None),
     ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
 
     out = ss.build_survival_statistics(cohort).collect()
     rows = {r.time_to_event_days: r for r in out}
 
-    assert set(rows) == {4, 9}
+    assert set(rows) == {0, 4, 9}
+    assert rows[0].num_events == 1
+    assert rows[0].num_at_risk == 4
     assert rows[4].num_events == 1
     assert rows[4].num_at_risk == 2
     assert rows[9].num_events == 0
     assert rows[9].num_at_risk == 1
+
+
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_gold_survival_summary_uses_deterministic_latest_metrics_on_ties(spark_session, monkeypatch):
+    spark = spark_session
+    cohort = spark.createDataFrame([
+        (1, "identity-1", "Metformin", "2020-01-01", "2020-01-10", 0, None),
+        (2, "identity-2", "Metformin", "2020-01-01", "2020-01-10", 1, "2020-01-10"),
+    ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
+
+    tied_curve = spark.createDataFrame([
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, 9, 0.4, 40.0, 0.2, 0.6, 0.4, 1, 1),
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, 9, 0.8, 80.0, 0.7, 0.9, 0.2, 2, 0),
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, 5, 0.9, 90.0, 0.8, 1.0, 0.2, 2, 0),
+    ], [
+        "treatment_group",
+        "silver_source_table",
+        "time_to_event_days",
+        "survival_probability",
+        "survival_percent",
+        "lower_ci",
+        "upper_ci",
+        "confidence_interval_width",
+        "num_at_risk",
+        "num_events",
+    ])
+
+    monkeypatch.setattr(ss, "build_survival_statistics", lambda _: tied_curve)
+
+    row = ss.build_survival_summary(cohort).collect()[0]
+
+    assert row.latest_time_point_days == 9
+    assert row.latest_survival_probability == pytest.approx(0.8)
+    assert row.latest_survival_percent == pytest.approx(80.0)
+    assert row.latest_num_at_risk == 2
+    assert row.latest_num_events == 0
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
