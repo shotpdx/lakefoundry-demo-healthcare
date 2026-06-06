@@ -527,13 +527,14 @@ def test_gold_survival_curve_counts_events_exactly_at_time_point(spark_session):
 
     out = ss.build_survival_statistics(cohort).collect()
     rows = {r.time_to_event_days: r for r in out}
+    assert set(rows) == {9}
     assert rows[9].num_events == 2
-    assert rows[19].num_events == 0
     assert rows[9].silver_source_table == dcs.SILVER_DIABETIC_TREATMENT_COHORT
     assert rows[9].silver_source_key == f"{dcs.SILVER_DIABETIC_TREATMENT_COHORT}::Metformin"
     assert rows[9].silver_lineage_layer == "silver"
     assert rows[9].gold_analytics_version == "v1"
     assert rows[9].survival_percent == pytest.approx(rows[9].survival_probability * 100.0)
+    assert 19 not in rows
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
@@ -550,13 +551,12 @@ def test_gold_survival_curve_keeps_same_day_outcomes_and_excludes_negative_follo
     out = ss.build_survival_statistics(cohort).collect()
     rows = {r.time_to_event_days: r for r in out}
 
-    assert set(rows) == {0, 4, 9}
+    assert set(rows) == {0, 4}
     assert rows[0].num_events == 1
     assert rows[0].num_at_risk == 4
     assert rows[4].num_events == 1
     assert rows[4].num_at_risk == 2
-    assert rows[9].num_events == 0
-    assert rows[9].num_at_risk == 1
+    assert 9 not in rows
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
@@ -619,9 +619,10 @@ def test_gold_survival_summary_provides_business_ready_treatment_rollup(spark_se
     assert metformin.total_events == 1
     assert metformin.event_rate == pytest.approx(0.5)
     assert metformin.event_rate_percent == pytest.approx(50.0)
-    assert metformin.latest_time_point_days == 19
+    assert metformin.latest_time_point_days == 9
     assert metformin.latest_survival_probability == pytest.approx(0.5)
     assert metformin.latest_survival_percent == pytest.approx(50.0)
+    assert metformin.latest_num_events == 1
     assert metformin.median_survival_days == 9
     assert metformin.median_survival_reached is True
 
@@ -633,6 +634,62 @@ def test_gold_survival_summary_provides_business_ready_treatment_rollup(spark_se
     assert glipizide.median_survival_reached is True
     assert glipizide.latest_num_at_risk == 1
     assert glipizide.latest_num_events == 1
+
+
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_gold_survival_summary_ignores_censored_follow_up_when_choosing_latest_point(spark_session):
+    spark = spark_session
+    cohort = spark.createDataFrame([
+        (1, "identity-1", "Metformin", "2020-01-01", "2020-01-06", 1, "2020-01-06"),
+        (2, "identity-2", "Metformin", "2020-01-01", "2020-01-21", 0, None),
+        (3, "identity-3", "Metformin", "2020-01-01", "2020-01-11", 1, "2020-01-11"),
+    ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
+
+    curve_rows = {row.time_to_event_days: row for row in ss.build_survival_statistics(cohort).collect()}
+    summary = ss.build_survival_summary(cohort).collect()[0]
+
+    assert set(curve_rows) == {5, 10}
+    assert summary.latest_time_point_days == 10
+    assert summary.latest_num_events == 1
+    assert summary.latest_survival_probability == pytest.approx(curve_rows[10].survival_probability)
+    assert summary.latest_survival_percent == pytest.approx(curve_rows[10].survival_percent)
+
+
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_gold_survival_summary_uses_first_event_driven_drop_below_half_for_median(spark_session, monkeypatch):
+    spark = spark_session
+    cohort = spark.createDataFrame([
+        (1, "identity-1", "Metformin", "2020-01-01", "2020-01-06", 1, "2020-01-06"),
+        (2, "identity-2", "Metformin", "2020-01-01", "2020-01-09", 1, "2020-01-09"),
+    ], ["person_id", "patient_identity_key", "treatment_group", "treatment_start_date", "observation_end_date", "mortality_status", "date_of_death"])
+
+    unstable_curve = spark.createDataFrame([
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, "silver_diabetic_treatment_cohort::Metformin", "silver", "v1", 4, 0.75, 75.0, 0.6, 0.9, 0.3, 2, 1),
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, "silver_diabetic_treatment_cohort::Metformin", "silver", "v1", 7, 0.5, 50.0, 0.3, 0.7, 0.4, 1, 0),
+        ("Metformin", dcs.SILVER_DIABETIC_TREATMENT_COHORT, "silver_diabetic_treatment_cohort::Metformin", "silver", "v1", 8, 0.0, 0.0, 0.0, 0.1, 0.1, 1, 1),
+    ], [
+        "treatment_group",
+        "silver_source_table",
+        "silver_source_key",
+        "silver_lineage_layer",
+        "gold_analytics_version",
+        "time_to_event_days",
+        "survival_probability",
+        "survival_percent",
+        "lower_ci",
+        "upper_ci",
+        "confidence_interval_width",
+        "num_at_risk",
+        "num_events",
+    ])
+
+    monkeypatch.setattr(ss, "build_survival_statistics", lambda _: unstable_curve)
+
+    row = ss.build_survival_summary(cohort).collect()[0]
+
+    assert row.median_survival_days == 8
+    assert row.median_survival_reached is True
+    assert row.latest_time_point_days == 8
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")

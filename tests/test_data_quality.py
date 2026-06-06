@@ -289,13 +289,44 @@ def test_gold_survival_curve_quality_thresholds_are_business_ready(tables_availa
         f"SELECT COUNT(*) AS invalid_count FROM {GOLD_SURVIVAL_CURVE_TABLE} "
         "WHERE time_to_event_days < 0 "
         "OR num_at_risk <= 0 "
-        "OR num_events < 0 "
+        "OR num_events <= 0 "
         "OR num_events > num_at_risk "
         "OR lower_ci < 0 OR lower_ci > 1 "
         "OR upper_ci < 0 OR upper_ci > 1 "
         "OR lower_ci > upper_ci "
         "OR confidence_interval_width < 0 "
         "OR ABS(survival_percent - (survival_probability * 100)) > 0.0001",
+        sql_executor,
+    )
+    assert rows[0]["invalid_count"] == 0
+
+
+def test_gold_summary_latest_point_must_match_event_time(sql_executor, tables_available):
+    rows = _run_sql(
+        f"WITH latest_summary AS ("
+        f"  SELECT treatment_group, latest_time_point_days, latest_num_events, latest_survival_probability "
+        f"  FROM {GOLD_SURVIVAL_SUMMARY_TABLE}"
+        f"), latest_curve AS ("
+        f"  SELECT treatment_group, MAX(time_to_event_days) AS latest_curve_time "
+        f"  FROM {GOLD_SURVIVAL_CURVE_TABLE} GROUP BY treatment_group"
+        f") "
+        f"SELECT COUNT(*) AS invalid_count "
+        f"FROM latest_summary s JOIN latest_curve c USING (treatment_group) "
+        f"WHERE s.latest_time_point_days <> c.latest_curve_time OR s.latest_num_events <= 0 OR s.latest_survival_probability IS NULL",
+        sql_executor,
+    )
+    assert rows[0]["invalid_count"] == 0
+
+
+def test_gold_summary_median_survival_must_land_on_event_row(sql_executor, tables_available):
+    rows = _run_sql(
+        f"SELECT COUNT(*) AS invalid_count "
+        f"FROM {GOLD_SURVIVAL_SUMMARY_TABLE} s "
+        f"LEFT JOIN {GOLD_SURVIVAL_CURVE_TABLE} c "
+        f"  ON s.treatment_group = c.treatment_group "
+        f" AND s.median_survival_days = c.time_to_event_days "
+        f"WHERE s.median_survival_reached = TRUE "
+        f"  AND (c.time_to_event_days IS NULL OR c.num_events <= 0 OR c.survival_probability > 0.5)",
         sql_executor,
     )
     assert rows[0]["invalid_count"] == 0

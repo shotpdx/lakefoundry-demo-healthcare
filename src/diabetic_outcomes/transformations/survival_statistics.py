@@ -91,9 +91,13 @@ def _gold_survival_events(cohort: DataFrame) -> DataFrame:
 def build_survival_statistics(cohort: DataFrame) -> DataFrame:
     events = _gold_survival_events(cohort)
 
-    time_grid = events.select("treatment_group", F.col("time_to_event_days").alias("time_point")).distinct()
+    event_time_grid = (
+        events.filter(F.col("event_indicator") == 1)
+        .select("treatment_group", F.col("time_to_event_days").alias("time_point"))
+        .distinct()
+    )
     at_risk = (
-        time_grid.alias("tg")
+        event_time_grid.alias("tg")
         .join(events.alias("e"), F.col("tg.treatment_group") == F.col("e.treatment_group"))
         .groupBy(F.col("tg.treatment_group").alias("treatment_group"), F.col("tg.time_point").alias("time_point"))
         .agg(
@@ -145,7 +149,7 @@ def build_survival_summary(cohort: DataFrame) -> DataFrame:
     median_window = Window.partitionBy("treatment_group").orderBy(F.col("time_to_event_days").asc())
 
     median_candidates = (
-        curve.filter(F.col("survival_probability") <= F.lit(0.5))
+        curve.filter((F.col("num_events") > 0) & (F.col("survival_probability") <= F.lit(0.5)))
         .withColumn("median_rank", F.row_number().over(median_window))
         .filter(F.col("median_rank") == 1)
         .select(

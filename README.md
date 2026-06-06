@@ -134,11 +134,11 @@ These Gold outputs intentionally expose explicit lineage markers back to the Sil
 
 Local tests now validate:
 
-- Gold curve metric correctness for event counting, same-day outcomes, and deterministic latest-point selection
-- Gold summary business metrics such as event rate percent, median survival, and latest survival rollups
+- Gold curve metric correctness for event counting, same-day outcomes, and event-only latest-point selection
+- Gold summary business metrics such as event rate percent, event-driven median survival, and latest survival rollups
 - explicit Gold-to-Silver lineage markers and stable business-friendly column contracts
 - Silver quality thresholds for lineage completeness, mortality consistency, and valid follow-up bounds
-- Gold quality thresholds for probability ranges, confidence interval ordering, at-risk/event count sanity, and percent-to-ratio consistency
+- Gold quality thresholds for probability ranges, confidence interval ordering, event-row latest point selection, median-on-event correctness, at-risk/event count sanity, and percent-to-ratio consistency
 
 ### Local verification for Tasks 1-2
 
