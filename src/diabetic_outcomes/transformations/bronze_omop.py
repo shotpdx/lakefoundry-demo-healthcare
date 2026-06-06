@@ -22,6 +22,14 @@ BRONZE_TABLE_NAMES = (
     BRONZE_CONCEPT,
 )
 
+SILVER_REQUIRED_BRONZE_TABLES = (
+    BRONZE_CONDITION_OCCURRENCE,
+    BRONZE_DRUG_EXPOSURE,
+    BRONZE_DEATH,
+    BRONZE_OBSERVATION_PERIOD,
+    BRONZE_CONCEPT,
+)
+
 
 def _source(table_name: str) -> str:
     return f"{SOURCE_PREFIX}.{table_name}"
@@ -35,6 +43,10 @@ def _with_bronze_metadata(df: DataFrame, source_table: str, key_columns: tuple[s
         .withColumn("bronze_source_key", source_key)
         .withColumn("bronze_ingested_at", current_ts)
     )
+
+
+def bronze_metadata_columns() -> tuple[str, ...]:
+    return ("bronze_source_table", "bronze_source_key", "bronze_ingested_at")
 
 
 @dp.materialized_view(

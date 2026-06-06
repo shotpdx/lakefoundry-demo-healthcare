@@ -43,6 +43,7 @@ def _diabetes_patients(condition: DataFrame) -> DataFrame:
             F.col("person_id").cast("bigint").alias("person_id"),
             F.col("condition_occurrence_id").cast("bigint").alias("diabetes_condition_occurrence_id"),
             F.col("condition_start_date").cast("date").alias("diabetes_condition_start_date"),
+            F.col("bronze_source_table").alias("diabetes_condition_bronze_table"),
             F.col("bronze_source_key").alias("diabetes_condition_bronze_source_key"),
             F.col("bronze_ingested_at").alias("diabetes_condition_bronze_ingested_at"),
         )
@@ -74,6 +75,7 @@ def _conformed_treatments(drug: DataFrame, concept: DataFrame) -> DataFrame:
             F.col("d.drug_source_value").alias("treatment_source_value"),
             F.col("co.concept_name").alias("treatment_concept_name"),
             F.col("co.concept_code").alias("treatment_concept_code"),
+            F.col("d.bronze_source_table").alias("drug_exposure_bronze_table"),
             F.col("d.bronze_source_key").alias("drug_exposure_bronze_source_key"),
             F.col("d.bronze_ingested_at").alias("drug_exposure_bronze_ingested_at"),
         )
@@ -93,6 +95,7 @@ def _observation_summary(observation: DataFrame) -> DataFrame:
             F.col("observation_period_id").cast("bigint").alias("observation_period_id"),
             F.col("observation_period_start_date").cast("date").alias("observation_period_start_date"),
             F.col("observation_period_end_date").cast("date").alias("observation_period_end_date"),
+            F.col("bronze_source_table").alias("observation_period_bronze_table"),
             F.col("bronze_source_key").alias("observation_period_bronze_source_key"),
             F.col("bronze_ingested_at").alias("observation_period_bronze_ingested_at"),
         )
@@ -114,6 +117,7 @@ def _death_summary(death: DataFrame) -> DataFrame:
         death.select(
             F.col("person_id").cast("bigint").alias("person_id"),
             F.col("death_date").cast("date").alias("death_date"),
+            F.col("bronze_source_table").alias("death_bronze_table"),
             F.col("bronze_source_key").alias("death_bronze_source_key"),
             F.col("bronze_ingested_at").alias("death_bronze_ingested_at"),
         )
@@ -188,16 +192,16 @@ def _build_cohort(diabetes_patients: DataFrame, first_treatment: DataFrame, obse
             F.col("treatment_source_value"),
             F.col("treatment_concept_name"),
             F.col("treatment_concept_code"),
-            F.lit(BRONZE_CONDITION_OCCURRENCE).alias("diabetes_condition_bronze_table"),
+            F.col("diabetes_condition_bronze_table"),
             F.col("diabetes_condition_bronze_source_key"),
             F.col("diabetes_condition_bronze_ingested_at"),
-            F.lit(BRONZE_DRUG_EXPOSURE).alias("drug_exposure_bronze_table"),
+            F.col("drug_exposure_bronze_table"),
             F.col("drug_exposure_bronze_source_key"),
             F.col("drug_exposure_bronze_ingested_at"),
-            F.lit(BRONZE_OBSERVATION_PERIOD).alias("observation_period_bronze_table"),
+            F.col("observation_period_bronze_table"),
             F.col("observation_period_bronze_source_key"),
             F.col("observation_period_bronze_ingested_at"),
-            F.when(F.col("death_bronze_source_key").isNotNull(), F.lit(BRONZE_DEATH)).otherwise(F.lit(None).cast("string")).alias("death_bronze_table"),
+            F.col("death_bronze_table"),
             F.col("death_bronze_source_key"),
             F.col("death_bronze_ingested_at"),
             F.current_timestamp().alias("silver_conformed_at"),

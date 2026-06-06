@@ -128,6 +128,27 @@ def test_bronze_table_set_matches_expected_medallion_inputs():
     assert all(table_name.startswith("bronze_omop_") for table_name in BRONZE_TABLES)
 
 
+def test_bronze_tables_are_sufficient_for_current_silver_scope():
+    required_for_silver = {
+        bronze.BRONZE_CONDITION_OCCURRENCE,
+        bronze.BRONZE_DRUG_EXPOSURE,
+        bronze.BRONZE_DEATH,
+        bronze.BRONZE_OBSERVATION_PERIOD,
+        bronze.BRONZE_CONCEPT,
+    }
+    assert required_for_silver.issubset(set(bronze.BRONZE_TABLE_NAMES))
+    assert bronze.BRONZE_PERSON in bronze.BRONZE_TABLE_NAMES
+
+
+def test_silver_schema_includes_identity_and_audit_lineage_columns():
+    schema_columns = {name: dtype for name, dtype in EXPECTED_COHORT_SCHEMA}
+    assert schema_columns["patient_identity_key"] == "string"
+    assert schema_columns["silver_conformed_at"] == "timestamp"
+    assert schema_columns["diabetes_condition_bronze_table"] == "string"
+    assert schema_columns["drug_exposure_bronze_source_key"] == "string"
+    assert schema_columns["observation_period_bronze_ingested_at"] == "timestamp"
+
+
 def test_silver_diabetic_treatment_cohort_schema(tables_available, sql_executor):
     _assert_schema(SILVER_COHORT_TABLE, EXPECTED_COHORT_SCHEMA, sql_executor)
 
