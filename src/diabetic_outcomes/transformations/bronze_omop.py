@@ -94,7 +94,7 @@ def bronze_omop_death() -> DataFrame:
         F.col("death_date").cast("date").alias("death_date"),
         F.col("death_datetime").cast("timestamp").alias("death_datetime"),
     )
-    return _with_bronze_metadata(death, "death", ("person_id", "death_date"))
+    return _with_bronze_metadata(death, "death", ("person_id", "death_date", "death_datetime"))
 
 
 @dp.materialized_view(

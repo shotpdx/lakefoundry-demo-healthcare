@@ -2,6 +2,7 @@ import pytest
 
 
 from diabetic_outcomes.transformations import bronze_omop as bronze
+from diabetic_outcomes.transformations import diabetic_cohort_summary as dcs
 
 CATALOG = "lakefoundry_dev"
 SCHEMA = "hls_demo_omop_analytics"
@@ -128,3 +129,11 @@ def test_bronze_lineage_columns_cover_downstream_needs():
     assert bronze._source("drug_exposure").endswith(".drug_exposure")
     assert bronze.BRONZE_DRUG_EXPOSURE in bronze.BRONZE_TABLE_NAMES
     assert bronze.BRONZE_CONDITION_OCCURRENCE in bronze.BRONZE_TABLE_NAMES
+
+
+def test_treatment_mapping_configuration_is_explicit():
+    assert dcs.TREATMENT_CONCEPT_PATTERNS == {
+        "Metformin": ("metformin",),
+        "Insulin Glargine": ("insulin glargine",),
+        "Glipizide": ("glipizide",),
+    }

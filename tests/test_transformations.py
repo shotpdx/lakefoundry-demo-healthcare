@@ -81,7 +81,7 @@ def test_diabetic_cohort_summary_uses_latest_observation_period(spark_session, m
     spark = spark_session
 
     tables = {
-        bronze.BRONZE_CONDITION_OCCURRENCE: spark.createDataFrame([(1, dcs.DIABETES_CONDITION_CODE)], ["person_id", "condition_source_value"]),
+        bronze.BRONZE_CONDITION_OCCURRENCE: spark.createDataFrame([(1, dcs.DIABETES_CONDITION_CODE), (2, dcs.DIABETES_CONDITION_CODE)], ["person_id", "condition_source_value"]),
         bronze.BRONZE_DRUG_EXPOSURE: spark.createDataFrame([
             (1, "metformin rxnorm", "2020-01-01", "2020-02-01"),
             (2, "glipizide rxnorm", "2020-03-01", "2020-04-01"),
@@ -106,6 +106,69 @@ def test_diabetic_cohort_summary_uses_latest_observation_period(spark_session, m
     result = dcs.diabetic_cohort_summary().collect()
     assert len(result) == 2
     assert {r.observation_end_date.isoformat() for r in result} == {"2020-12-31", "2020-05-01"}
+
+
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_diabetic_cohort_summary_maps_treatments_from_unmatched_drug_source_values(spark_session, monkeypatch):
+    spark = spark_session
+
+    tables = {
+        bronze.BRONZE_CONDITION_OCCURRENCE: spark.createDataFrame(
+            [(1, dcs.DIABETES_CONDITION_CODE), (2, dcs.DIABETES_CONDITION_CODE), (3, dcs.DIABETES_CONDITION_CODE)],
+            ["person_id", "condition_source_value"],
+        ),
+        bronze.BRONZE_DRUG_EXPOSURE: spark.createDataFrame(
+            [
+                (1, "Metformin 500 MG Oral Tablet", "2020-01-01", "2020-01-31"),
+                (2, "insulin glargine prefilled pen", "2020-02-01", "2020-02-28"),
+                (3, "GLIPIZIDE ER", "2020-03-01", "2020-03-31"),
+            ],
+            ["person_id", "drug_source_value", "drug_exposure_start_date", "drug_exposure_end_date"],
+        ),
+        bronze.BRONZE_DEATH: spark.createDataFrame([(1, None), (2, None), (3, None)], ["person_id", "death_date"]),
+        bronze.BRONZE_OBSERVATION_PERIOD: spark.createDataFrame(
+            [(1, "2020-06-01"), (2, "2020-06-01"), (3, "2020-06-01")],
+            ["person_id", "observation_period_end_date"],
+        ),
+        bronze.BRONZE_CONCEPT: spark.createDataFrame([], "concept_code string, concept_name string"),
+    }
+
+    class Reader:
+        def table(self, name):
+            return tables[name]
+
+    monkeypatch.setattr(dcs, 'spark', MagicMock(read=Reader()))
+    result = dcs.diabetic_cohort_summary().collect()
+
+    assert {(r.person_id, r.treatment_group) for r in result} == {
+        (1, "Metformin"),
+        (2, "Insulin Glargine"),
+        (3, "Glipizide"),
+    }
+
+
+@pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")
+def test_bronze_omop_death_source_key_includes_datetime(spark_session, monkeypatch):
+    spark = spark_session
+    source_df = spark.createDataFrame(
+        [
+            (1, "2020-01-01", "2020-01-01 00:00:00"),
+            (1, "2020-01-01", "2020-01-01 12:00:00"),
+        ],
+        ["person_id", "death_date", "death_datetime"],
+    )
+
+    class Reader:
+        def table(self, name):
+            assert name == bronze._source("death")
+            return source_df
+
+    monkeypatch.setattr(bronze, "spark", MagicMock(read=Reader()))
+    result = bronze.bronze_omop_death().collect()
+
+    assert len(result) == 2
+    assert len({row.bronze_source_key for row in result}) == 2
+    assert all("2020-01-01" in row.bronze_source_key for row in result)
 
 
 @pytest.mark.skipif(not SPARK_AVAILABLE, reason="PySpark not available")

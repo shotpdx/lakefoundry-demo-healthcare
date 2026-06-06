@@ -12,10 +12,29 @@ from diabetic_outcomes.transformations.bronze_omop import (
 )
 
 DIABETES_CONDITION_CODE = "44054006"
+TREATMENT_CONCEPT_PATTERNS = {
+    "Metformin": ("metformin",),
+    "Insulin Glargine": ("insulin glargine",),
+    "Glipizide": ("glipizide",),
+}
 
 
 def _bronze(table_name: str) -> str:
     return table_name
+
+
+def _treatment_group_expression() -> F.Column:
+    concept_name = F.lower(F.coalesce(F.col("co.concept_name"), F.lit("")))
+    concept_code = F.lower(F.coalesce(F.col("co.concept_code"), F.lit("")))
+    drug_source_value = F.lower(F.coalesce(F.col("d.drug_source_value"), F.lit("")))
+
+    treatment_group = F.lit("Unknown")
+    for label, patterns in reversed(tuple(TREATMENT_CONCEPT_PATTERNS.items())):
+        pattern_match = F.lit(False)
+        for pattern in patterns:
+            pattern_match = pattern_match | concept_name.contains(pattern) | concept_code.contains(pattern) | drug_source_value.contains(pattern)
+        treatment_group = F.when(pattern_match, F.lit(label)).otherwise(treatment_group)
+    return treatment_group
 
 
 @dp.materialized_view(
@@ -36,14 +55,9 @@ def diabetic_cohort_summary() -> DataFrame:
     )
 
     treatments = (
-        drug.join(concept, F.col("d.drug_source_value") == F.col("co.concept_code"), "inner")
-        .withColumn(
-            "treatment_group",
-            F.when(F.lower(F.col("co.concept_name")).contains("metformin"), F.lit("Metformin"))
-            .when(F.lower(F.col("co.concept_name")).contains("insulin glargine"), F.lit("Insulin Glargine"))
-            .when(F.lower(F.col("co.concept_name")).contains("glipizide"), F.lit("Glipizide")),
-        )
-        .filter(F.col("treatment_group").isNotNull())
+        drug.join(concept, F.col("d.drug_source_value") == F.col("co.concept_code"), "left")
+        .withColumn("treatment_group", _treatment_group_expression())
+        .filter(F.col("treatment_group") != F.lit("Unknown"))
         .select(
             F.col("d.person_id").alias("person_id"),
             F.col("treatment_group"),
