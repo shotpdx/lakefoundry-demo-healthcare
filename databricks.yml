@@ -6,11 +6,23 @@ include:
 
 variables:
   catalog:
-    default: lakefoundry_dev
+    default: cme_outcomes_uswest
   schema:
-    default: hls_demo_omop_analytics
+    default: lakefoundry
+  source_catalog:
+    default: cme_outcomes_uswest
+  source_schema:
+    default: omop_seed
 
+# Use an accessible workspace catalog/schema for bundle-managed resources.
+# The pipeline defaults to a deterministic seeded OMOP source in this workspace.
 targets:
   dev:
     default: true
     mode: development
+    variables:
+      catalog: cme_outcomes_uswest
+      schema: lakefoundry
+      source_catalog: cme_outcomes_uswest
+      source_schema: omop_seed
+

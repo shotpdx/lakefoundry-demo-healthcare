@@ -1,0 +1,18 @@
+Update URL: https://dbc-2fe34280-c47a.cloud.databricks.com/#joblist/pipelines/cffce3c0-1cb3-46d1-9d03-ef4cf4fbab45/updates/af3e988c-862f-4751-9200-e5c3c010986a
+
+2026-06-06T06:41:52.061Z update_progress INFO "Update af3e98 is INITIALIZING."
+2026-06-06T06:41:52.464Z update_progress ERROR "Update af3e98 is FAILED."
+Exception thrown in awaitResult: com.databricks.pipelines.common.errors.DLTSparkRuntimeException: [PYTHON_REPL_CREATION_FAILED] Failed to create Python REPL during pipeline initialization. This issue may be transient. Try restarting your pipeline and contact Databricks for support if this issue persists.
+com.databricks.pipelines.common.errors.DLTSparkRuntimeException: [PYTHON_REPL_CREATION_FAILED] Failed to create Python REPL during pipeline initialization. This issue may be transient. Try restarting your pipeline and contact Databricks for support if this issue persists.
+[PYTHON_REPL_CREATION_FAILED] Failed to create Python REPL during pipeline initialization. This issue may be transient. Try restarting your pipeline and contact Databricks for support if this issue persists.
+Failed to launch process in sandbox, exit code: 1, stderr: 2026/06/06 06:41:10 Failed to launch sandbox: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial unix /sandbox/sandbox.sock: connect: connection refused"
+
+Error: [update_progress]  Update af3e98 is FAILED.
+trace for most recent exception: 
+Exception thrown in awaitResult: com.databricks.pipelines.common.errors.DLTSparkRuntimeException: [PYTHON_REPL_CREATION_FAILED] Failed to create Python REPL during pipeline initialization. This issue may be transient. Try restarting your pipeline and contact Databricks for support if this issue persists.
+com.databricks.pipelines.common.errors.DLTSparkRuntimeException: [PYTHON_REPL_CREATION_FAILED] Failed to create Python REPL during pipeline initialization. This issue may be transient. Try restarting your pipeline and contact Databricks for support if this issue persists.
+[PYTHON_REPL_CREATION_FAILED] Failed to create Python REPL during pipeline initialization. This issue may be transient. Try restarting your pipeline and contact Databricks for support if this issue persists.
+Failed to launch process in sandbox, exit code: 1, stderr: 2026/06/06 06:41:10 Failed to launch sandbox: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial unix /sandbox/sandbox.sock: connect: connection refused"
+
+
+Error: update failed

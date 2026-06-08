@@ -1,0 +1,8 @@
+$ pytest tests/test_transformations.py tests/test_data_quality.py
+5 passed, 17 skipped in 0.06s
+
+$ python -m ruff check src tests
+FAILED: No module named ruff
+
+$ python -m mypy src tests
+FAILED: No module named mypy
